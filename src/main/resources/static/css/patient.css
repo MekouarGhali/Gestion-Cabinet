@@ -1,0 +1,138 @@
+/* Sidebar styles */
+.sidebar-fixed {
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+    z-index: 50;
+}
+
+@media (max-width: 768px) {
+    .sidebar-fixed {
+        transform: translateX(-100%);
+    }
+
+    .sidebar-fixed.show {
+        transform: translateX(0);
+    }
+}
+
+/* Burger button */
+.burger-btn {
+    display: flex;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.burger-btn:hover {
+    background-color: #f3f4f6;
+}
+
+/* Navigation links */
+.nav-link {
+    transition: all 0.2s ease;
+}
+
+.nav-link.active {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+    border-left: 3px solid #2563eb;
+}
+
+.nav-link:hover:not(.active) {
+    background-color: #f9fafb;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+}
+
+/* Action buttons */
+.action-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.view-btn { color: #3b82f6; }
+.view-btn:hover { color: #2563eb; }
+
+.edit-btn { color: #6b7280; }
+.edit-btn:hover { color: #4b5563; }
+
+.delete-btn { color: #ef4444; }
+.delete-btn:hover { color: #dc2626; }
+
+/* Filter buttons */
+.filter-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+/* View toggle buttons */
+.view-toggle-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.view-toggle-btn.active {
+    background-color: #e5e7eb;
+}
+
+/* Pagination buttons */
+.pagination-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background-color: #f3f4f6;
+}
+
+/* Form validation */
+.border-red-500 {
+    border-color: #ef4444 !important;
+}
+
+.text-red-500 {
+    color: #ef4444 !important;
+}
+
+/* Custom font */
+@font-face {
+    font-family: 'Pacifico';
+    font-style: normal;
+    font-weight: 400;
+    src: local('Pacifico Regular'), local('Pacifico-Regular'),
+    url(https://fonts.gstatic.com/s/pacifico/v17/FwZY7-Qmy14u9lezJ-6H6MmBp0u-.woff2) format('woff2');
+    font-display: swap;
+}
+
+.font-pacifico {
+    font-family: 'Pacifico', cursive;
+}
