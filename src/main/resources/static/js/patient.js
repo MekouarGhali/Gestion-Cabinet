@@ -1,872 +1,1062 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // State management
-    const state = {
-        currentFilter: 'all',
-        currentSort: 'name-asc',
-        currentPage: 1,
-        itemsPerPage: 7,
-        patients: [],
-        selectedPatient: null
-    };
+// Configuration API
+const API_BASE_URL = '/api';
 
-    // Initialize app
-    init();
+// Variables globales
+let currentFilter = 'all';
+let currentSort = 'name-asc';
+let currentPage = 1;
+let itemsPerPage = 7;
+let filteredPatients = [];
+let selectedPatient = null;
+let allPatients = [];
 
-    async function init() {
-        await loadPatients();
-        setupEventListeners();
-        updateCurrentDate();
-    }
-
-    // Event Listeners
-    function setupEventListeners() {
-        // New patient button
-        document.getElementById('newPatientBtn').addEventListener('click', showNewPatientModal);
-
-        // Search input
-        document.getElementById('searchInput').addEventListener('input', debounce(() => {
-            state.currentPage = 1;
-            loadPatients();
-        }, 300));
-    }
-
-    // API Functions
-    async function loadPatients() {
+// Classe pour gérer les appels API
+class PatientAPI {
+    static async getAll() {
         try {
-            let url = '/api/patients';
-            if (state.currentFilter !== 'all') {
-                url = `/api/patients/statut/${state.currentFilter}`;
-            }
-
-            const searchTerm = document.getElementById('searchInput').value.trim();
-            if (searchTerm) {
-                url = `/api/patients/search?q=${encodeURIComponent(searchTerm)}`;
-            }
-
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Network response was not ok');
-
-            state.patients = await response.json();
-            renderPatients();
+            const response = await fetch(`${API_BASE_URL}/patients`);
+            if (!response.ok) throw new Error('Erreur lors du chargement des patients');
+            return await response.json();
         } catch (error) {
-            console.error('Error loading patients:', error);
+            console.error('Erreur API getAll:', error);
             showNotification('error', 'Erreur lors du chargement des patients');
+            return [];
         }
     }
 
-    async function createPatient(patientData) {
+    static async getById(id) {
         try {
-            const response = await fetch('/api/patients', {
+            const response = await fetch(`${API_BASE_URL}/patients/${id}`);
+            if (!response.ok) throw new Error('Patient introuvable');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API getById:', error);
+            return null;
+        }
+    }
+
+    static async getByStatus(status) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/patients/statut/${status}`);
+            if (!response.ok) throw new Error('Erreur lors du filtrage');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API getByStatus:', error);
+            return [];
+        }
+    }
+
+    static async search(query) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/patients/search?q=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Erreur lors de la recherche');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API search:', error);
+            return [];
+        }
+    }
+
+    static async create(patientData) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/patients`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(patientData)
             });
-
-            if (!response.ok) throw new Error('Error creating patient');
-
+            if (!response.ok) throw new Error('Erreur lors de la création');
             return await response.json();
         } catch (error) {
-            console.error('Error creating patient:', error);
+            console.error('Erreur API create:', error);
             throw error;
         }
     }
 
-    async function updatePatient(id, patientData) {
+    static async update(id, patientData) {
         try {
-            const response = await fetch(`/api/patients/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(patientData)
             });
-
-            if (!response.ok) throw new Error('Error updating patient');
-
+            if (!response.ok) throw new Error('Erreur lors de la mise à jour');
             return await response.json();
         } catch (error) {
-            console.error('Error updating patient:', error);
+            console.error('Erreur API update:', error);
             throw error;
         }
     }
 
-    async function deletePatient(id) {
+    static async delete(id) {
         try {
-            const response = await fetch(`/api/patients/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
                 method: 'DELETE'
             });
-
-            if (!response.ok) throw new Error('Error deleting patient');
-
+            if (!response.ok) throw new Error('Erreur lors de la suppression');
             return true;
         } catch (error) {
-            console.error('Error deleting patient:', error);
+            console.error('Erreur API delete:', error);
             throw error;
         }
     }
+}
 
-    // Rendering Functions
-    function renderPatients() {
-        const container = document.getElementById('patientsContainer');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-100">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="flex space-x-2">
-                        <button class="filter-btn ${state.currentFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100'}" 
-                                data-filter="all">Tous</button>
-                        <button class="filter-btn ${state.currentFilter === 'actif' ? 'bg-blue-600 text-white' : 'bg-gray-100'}" 
-                                data-filter="actif">Actifs</button>
-                        <button class="filter-btn ${state.currentFilter === 'inactif' ? 'bg-blue-600 text-white' : 'bg-gray-100'}" 
-                                data-filter="inactif">Inactifs</button>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button id="listViewBtn" class="view-toggle-btn active">
-                            <i class="ri-list-check-2"></i>
-                        </button>
-                        <button id="gridViewBtn" class="view-toggle-btn">
-                            <i class="ri-grid-line"></i>
-                        </button>
-                    </div>
-                </div>
-                <div id="patientsView"></div>
-            </div>
-        `;
-
-        // Add filter event listeners
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                state.currentFilter = this.dataset.filter;
-                state.currentPage = 1;
-                loadPatients();
-            });
-        });
-
-        // Add view toggle listeners
-        document.getElementById('listViewBtn').addEventListener('click', () => {
-            document.getElementById('listViewBtn').classList.add('active');
-            document.getElementById('gridViewBtn').classList.remove('active');
-            renderTableView();
-        });
-
-        document.getElementById('gridViewBtn').addEventListener('click', () => {
-            document.getElementById('gridViewBtn').classList.add('active');
-            document.getElementById('listViewBtn').classList.remove('active');
-            renderGridView();
-        });
-
-        // Render default view
-        renderTableView();
+// Utilitaires
+function calculateAge(birthDate) {
+    if (!birthDate) return 0;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
     }
+    return age;
+}
 
-    function renderTableView() {
-        const viewContainer = document.getElementById('patientsView');
-        if (!viewContainer) return;
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR');
+}
 
-        const startIndex = (state.currentPage - 1) * state.itemsPerPage;
-        const paginatedPatients = state.patients.slice(startIndex, startIndex + state.itemsPerPage);
+function getAvatarColor(index) {
+    const colors = [
+        { bg: 'bg-indigo-200', text: 'text-indigo-700' },
+        { bg: 'bg-blue-200', text: 'text-blue-700' },
+        { bg: 'bg-red-200', text: 'text-red-700' },
+        { bg: 'bg-green-200', text: 'text-green-700' },
+        { bg: 'bg-purple-200', text: 'text-purple-700' },
+        { bg: 'bg-yellow-200', text: 'text-yellow-700' },
+        { bg: 'bg-pink-200', text: 'text-pink-700' }
+    ];
+    return colors[index % colors.length];
+}
 
-        viewContainer.innerHTML = `
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Âge</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Téléphone</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pathologie</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dernière visite</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Séances</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="patientsTableBody" class="bg-white divide-y divide-gray-200"></tbody>
-                </table>
-            </div>
-            ${renderPagination()}
-        `;
+function getStatusClass(status) {
+    switch(status?.toLowerCase()) {
+        case 'actif': return 'status-actif';
+        case 'inactif': return 'status-inactif';
+        case 'nouveau': return 'status-nouveau';
+        default: return 'status-nouveau';
+    }
+}
 
-        const tableBody = document.getElementById('patientsTableBody');
-        if (paginatedPatients.length === 0) {
-            tableBody.innerHTML = `
-                <tr>
-                    <td colspan="8" class="px-6 py-4 text-center text-gray-500">Aucun patient trouvé</td>
-                </tr>
-            `;
-            return;
+function getStatusLabel(status) {
+    switch(status?.toLowerCase()) {
+        case 'actif': return 'Actif';
+        case 'inactif': return 'Inactif';
+        case 'nouveau': return 'Nouveau';
+        default: return 'Nouveau';
+    }
+}
+
+// Gestion des patients
+async function loadPatients() {
+    try {
+        allPatients = await PatientAPI.getAll();
+        await filterPatients();
+    } catch (error) {
+        console.error('Erreur lors du chargement:', error);
+        showNotification('error', 'Erreur lors du chargement des patients');
+    }
+}
+
+async function filterPatients() {
+    try {
+        if (currentFilter === 'all') {
+            filteredPatients = [...allPatients];
+        } else {
+            filteredPatients = await PatientAPI.getByStatus(currentFilter);
         }
 
-        paginatedPatients.forEach(patient => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-gray-50';
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
+        // Appliquer la recherche si nécessaire
+        const searchTerm = document.getElementById('searchInput').value.trim();
+        if (searchTerm) {
+            filteredPatients = await PatientAPI.search(searchTerm);
+            // Filtrer encore par statut si ce n'est pas "all"
+            if (currentFilter !== 'all') {
+                filteredPatients = filteredPatients.filter(p => p.statut?.toLowerCase() === currentFilter);
+            }
+        }
+
+        // Tri
+        sortPatients();
+        updatePatientsList();
+    } catch (error) {
+        console.error('Erreur lors du filtrage:', error);
+        showNotification('error', 'Erreur lors du filtrage');
+    }
+}
+
+function sortPatients() {
+    filteredPatients.sort((a, b) => {
+        switch(currentSort) {
+            case 'name-asc':
+                return (a.nom || '').localeCompare(b.nom || '');
+            case 'name-desc':
+                return (b.nom || '').localeCompare(a.nom || '');
+            case 'date':
+                return new Date(b.derniereVisite || 0) - new Date(a.derniereVisite || 0);
+            case 'age':
+                return calculateAge(a.dateNaissance) - calculateAge(b.dateNaissance);
+            default:
+                return 0;
+        }
+    });
+}
+
+function updatePatientsList() {
+    // Mise à jour des compteurs
+    document.getElementById('totalPatients').textContent = filteredPatients.length;
+    document.getElementById('gridTotalPatients').textContent = filteredPatients.length;
+
+    // Pagination
+    const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+
+    if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+    }
+
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = Math.min(start + itemsPerPage, filteredPatients.length);
+
+    document.getElementById('startRange').textContent = filteredPatients.length ? start + 1 : 0;
+    document.getElementById('endRange').textContent = end;
+    document.getElementById('gridStartRange').textContent = filteredPatients.length ? start + 1 : 0;
+    document.getElementById('gridEndRange').textContent = end;
+
+    const currentPagePatients = filteredPatients.slice(start, end);
+
+    // Mise à jour des vues
+    renderTableView(currentPagePatients);
+    renderGridView(currentPagePatients);
+    createPagination(totalPages);
+}
+
+function renderTableView(patients) {
+    const tableBody = document.getElementById('patientsTableBody');
+    tableBody.innerHTML = '';
+
+    if (patients.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                Aucun patient trouvé
+            </td>
+        `;
+        tableBody.appendChild(emptyRow);
+        return;
+    }
+
+    patients.forEach((patient, index) => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50';
+
+        const age = calculateAge(patient.dateNaissance);
+        const statusClass = getStatusClass(patient.statut);
+        const statusLabel = getStatusLabel(patient.statut);
+        const avatarColor = getAvatarColor(index);
+
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                    <div class="w-8 h-8 rounded-full ${avatarColor.bg} flex items-center justify-center ${avatarColor.text} mr-3">
+                        <span class="text-xs font-medium">${patient.avatar || ''}</span>
+                    </div>
+                    <div>
+                        <div class="text-sm font-medium text-gray-900">${patient.prenom || ''} ${patient.nom || ''}</div>
+                        <div class="text-xs text-gray-500">ID: ${patient.id}</div>
+                    </div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                ${age} ans
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                ${patient.telephone || 'N/A'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                ${patient.pathologie || 'N/A'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                ${formatDate(patient.derniereVisite)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+                ${patient.seancesEffectuees || 0}/${patient.seancesPrevues || 0}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="status-badge ${statusClass}">
+                    ${statusLabel}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex justify-end space-x-2">
+                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-primary view-patient-btn" data-id="${patient.id}">
+                        <i class="ri-file-list-line"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 edit-patient-btn" data-id="${patient.id}">
+                        <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-red-500 delete-patient-btn" data-id="${patient.id}">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+
+    addButtonEventListeners();
+}
+
+function renderGridView(patients) {
+    const gridContainer = document.getElementById('gridView');
+    gridContainer.innerHTML = '';
+
+    if (patients.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'col-span-full text-center py-8 text-gray-500';
+        emptyMessage.textContent = 'Aucun patient trouvé';
+        gridContainer.appendChild(emptyMessage);
+        return;
+    }
+
+    patients.forEach((patient, index) => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200 grid-view-card';
+
+        const age = calculateAge(patient.dateNaissance);
+        const statusClass = getStatusClass(patient.statut);
+        const statusLabel = getStatusLabel(patient.statut);
+        const avatarColor = getAvatarColor(index);
+
+        card.innerHTML = `
+            <div class="p-4">
+                <div class="flex items-center mb-4">
+                    <div class="w-10 h-10 rounded-full ${avatarColor.bg} flex items-center justify-center ${avatarColor.text} mr-3">
+                        <span class="font-medium">${patient.avatar || ''}</span>
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-900">${patient.prenom || ''} ${patient.nom || ''}</div>
+                        <div class="text-xs text-gray-500">ID: ${patient.id}</div>
+                    </div>
+                    <span class="status-badge ${statusClass} ml-auto">${statusLabel}</span>
+                </div>
+                <div class="space-y-2 text-sm text-gray-600 mb-4">
                     <div class="flex items-center">
-                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 mr-3">
-                            <span class="text-xs font-medium">${patient.avatar}</span>
+                        <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-400">
+                            <i class="ri-calendar-line"></i>
                         </div>
-                        <div>
-                            <div class="text-sm font-medium text-gray-900">${patient.prenom} ${patient.nom}</div>
-                            <div class="text-xs text-gray-500">ID: ${patient.id}</div>
-                        </div>
+                        <span>${age} ans</span>
                     </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    ${calculateAge(patient.dateNaissance)} ans
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    ${patient.telephone}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    ${patient.pathologie}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    ${formatDate(patient.derniereVisite)}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
-                    ${patient.seancesEffectuees}/${patient.seancesPrevues}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="status-badge ${getStatusClass(patient.statut)}">
-                        ${getStatusLabel(patient.statut)}
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div class="flex justify-end space-x-2">
-                        <button class="action-btn view-btn" data-id="${patient.id}">
-                            <i class="ri-file-list-line"></i>
-                        </button>
-                        <button class="action-btn edit-btn" data-id="${patient.id}">
-                            <i class="ri-edit-line"></i>
-                        </button>
-                        <button class="action-btn delete-btn" data-id="${patient.id}">
-                            <i class="ri-delete-bin-line"></i>
-                        </button>
-                    </div>
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
-
-        addPatientActionListeners();
-    }
-
-    function renderGridView() {
-        const viewContainer = document.getElementById('patientsView');
-        if (!viewContainer) return;
-
-        const startIndex = (state.currentPage - 1) * state.itemsPerPage;
-        const paginatedPatients = state.patients.slice(startIndex, startIndex + state.itemsPerPage);
-
-        viewContainer.innerHTML = `
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                ${paginatedPatients.length > 0 ?
-            paginatedPatients.map(patient => `
-                        <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-                            <div class="p-4">
-                                <div class="flex items-center mb-4">
-                                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 mr-3">
-                                        <span class="font-medium">${patient.avatar}</span>
-                                    </div>
-                                    <div>
-                                        <div class="font-medium text-gray-900">${patient.prenom} ${patient.nom}</div>
-                                        <div class="text-xs text-gray-500">${patient.id}</div>
-                                    </div>
-                                    <span class="status-badge ${getStatusClass(patient.statut)} ml-auto">
-                                        ${getStatusLabel(patient.statut)}
-                                    </span>
-                                </div>
-                                <div class="space-y-2 text-sm text-gray-600 mb-4">
-                                    <div class="flex items-center">
-                                        <i class="ri-calendar-line mr-2 text-gray-400"></i>
-                                        <span>${calculateAge(patient.dateNaissance)} ans</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <i class="ri-phone-line mr-2 text-gray-400"></i>
-                                        <span>${patient.telephone}</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <i class="ri-heart-pulse-line mr-2 text-gray-400"></i>
-                                        <span class="truncate">${patient.pathologie}</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <i class="ri-time-line mr-2 text-gray-400"></i>
-                                        <span>Dernière visite: ${formatDate(patient.derniereVisite)}</span>
-                                    </div>
-                                    <div class="flex items-center">
-                                        <i class="ri-calendar-check-line mr-2 text-gray-400"></i>
-                                        <span>Séances: ${patient.seancesEffectuees}/${patient.seancesPrevues}</span>
-                                    </div>
-                                </div>
-                                <div class="flex justify-end space-x-2 border-t border-gray-100 pt-3">
-                                    <button class="action-btn view-btn" data-id="${patient.id}">
-                                        <i class="ri-file-list-line"></i>
-                                    </button>
-                                    <button class="action-btn edit-btn" data-id="${patient.id}">
-                                        <i class="ri-edit-line"></i>
-                                    </button>
-                                    <button class="action-btn delete-btn" data-id="${patient.id}">
-                                        <i class="ri-delete-bin-line"></i>
-                                    </button>
-                                </div>
-                            </div>
+                    <div class="flex items-center">
+                        <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-400">
+                            <i class="ri-phone-line"></i>
                         </div>
-                    `).join('') :
-            '<div class="col-span-full text-center py-8 text-gray-500">Aucun patient trouvé</div>'}
-            </div>
-            ${renderPagination()}
-        `;
-
-        addPatientActionListeners();
-    }
-
-    function renderPagination() {
-        const totalPages = Math.ceil(state.patients.length / state.itemsPerPage);
-        if (totalPages <= 1) return '';
-
-        return `
-            <div class="bg-white px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div class="text-sm text-gray-700">
-                    Affichage de <span class="font-medium">${Math.min((state.currentPage - 1) * state.itemsPerPage + 1, state.patients.length)}</span> 
-                    à <span class="font-medium">${Math.min(state.currentPage * state.itemsPerPage, state.patients.length)}</span> 
-                    sur <span class="font-medium">${state.patients.length}</span> patients
+                        <span>${patient.telephone || 'N/A'}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-400">
+                            <i class="ri-heart-pulse-line"></i>
+                        </div>
+                        <span class="truncate">${patient.pathologie || 'N/A'}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-400">
+                            <i class="ri-time-line"></i>
+                        </div>
+                        <span>Dernière visite: ${formatDate(patient.derniereVisite)}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-400">
+                            <i class="ri-calendar-check-line"></i>
+                        </div>
+                        <span>Séances: ${patient.seancesEffectuees || 0}/${patient.seancesPrevues || 0}</span>
+                    </div>
                 </div>
-                <div class="flex space-x-2">
-                    <button class="pagination-btn ${state.currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" 
-                            ${state.currentPage === 1 ? 'disabled' : ''} data-page="prev">
-                        Précédent
+                <div class="flex justify-end space-x-2 border-t border-gray-100 pt-3">
+                    <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary view-patient-btn" data-id="${patient.id}">
+                        <i class="ri-file-list-line"></i>
                     </button>
-                    ${Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            const page = state.currentPage <= 3 ? i + 1 :
-                state.currentPage >= totalPages - 2 ? totalPages - 4 + i :
-                    state.currentPage - 2 + i;
-            return `
-                            <button class="pagination-btn ${state.currentPage === page ? 'bg-blue-600 text-white' : ''}" 
-                                    data-page="${page}">
-                                ${page}
-                            </button>
-                        `;
-        }).join('')}
-                    <button class="pagination-btn ${state.currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" 
-                            ${state.currentPage === totalPages ? 'disabled' : ''} data-page="next">
-                        Suivant
+                    <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-primary edit-patient-btn" data-id="${patient.id}">
+                        <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 delete-patient-btn" data-id="${patient.id}">
+                        <i class="ri-delete-bin-line"></i>
                     </button>
                 </div>
             </div>
         `;
+
+        gridContainer.appendChild(card);
+    });
+
+    addButtonEventListeners();
+}
+
+function createPagination(totalPages) {
+    const paginationContainer = document.getElementById('paginationContainer');
+    const gridPaginationContainer = document.getElementById('gridPaginationContainer');
+
+    paginationContainer.innerHTML = '';
+    gridPaginationContainer.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    function createPaginationButtons(container) {
+        // Bouton Précédent
+        const prevBtn = document.createElement('button');
+        prevBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm text-gray-700 bg-white ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`;
+        prevBtn.innerHTML = 'Précédent';
+        prevBtn.disabled = currentPage === 1;
+
+        if (currentPage > 1) {
+            prevBtn.addEventListener('click', () => {
+                currentPage--;
+                updatePatientsList();
+            });
+        }
+
+        container.appendChild(prevBtn);
+
+        // Numéros de pages
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const pageBtn = document.createElement('button');
+            pageBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm ${i === currentPage ? 'bg-primary text-white' : 'text-gray-700 bg-white hover:bg-gray-50'}`;
+            pageBtn.textContent = i;
+
+            if (i !== currentPage) {
+                pageBtn.addEventListener('click', () => {
+                    currentPage = i;
+                    updatePatientsList();
+                });
+            }
+
+            container.appendChild(pageBtn);
+        }
+
+        // Bouton Suivant
+        const nextBtn = document.createElement('button');
+        nextBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm text-gray-700 bg-white ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`;
+        nextBtn.innerHTML = 'Suivant';
+        nextBtn.disabled = currentPage === totalPages;
+
+        if (currentPage < totalPages) {
+            nextBtn.addEventListener('click', () => {
+                currentPage++;
+                updatePatientsList();
+            });
+        }
+
+        container.appendChild(nextBtn);
     }
 
-    function addPatientActionListeners() {
-        // View buttons
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const patientId = this.dataset.id;
-                state.selectedPatient = state.patients.find(p => p.id == patientId);
-                showPatientDetailsModal();
-            });
-        });
+    createPaginationButtons(paginationContainer);
+    createPaginationButtons(gridPaginationContainer);
+}
 
-        // Edit buttons
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const patientId = this.dataset.id;
-                state.selectedPatient = state.patients.find(p => p.id == patientId);
-                showEditPatientModal();
-            });
-        });
+function addButtonEventListeners() {
+    // Boutons de visualisation du dossier
+    document.querySelectorAll('.view-patient-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const patientId = this.dataset.id;
+            const patient = await PatientAPI.getById(patientId);
 
-        // Delete buttons
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const patientId = this.dataset.id;
-                state.selectedPatient = state.patients.find(p => p.id == patientId);
-                showDeleteConfirmationModal();
-            });
-        });
-
-        // Pagination buttons
-        document.querySelectorAll('.pagination-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const pageAction = this.dataset.page;
-
-                if (pageAction === 'prev' && state.currentPage > 1) {
-                    state.currentPage--;
-                } else if (pageAction === 'next' && state.currentPage < Math.ceil(state.patients.length / state.itemsPerPage)) {
-                    state.currentPage++;
-                } else if (!isNaN(pageAction)) {
-                    state.currentPage = parseInt(pageAction);
-                }
-
-                if (document.getElementById('listViewBtn').classList.contains('active')) {
-                    renderTableView();
-                } else {
-                    renderGridView();
-                }
-            });
-        });
-    }
-
-    // Modal Functions
-    function showNewPatientModal() {
-        const modalHTML = `
-            <div id="newPatientModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-                    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-gray-900">Nouveau Patient</h3>
-                        <button id="closeNewPatientBtn" class="text-gray-400 hover:text-gray-500">
-                            <i class="ri-close-line"></i>
-                        </button>
-                    </div>
-                    <div class="p-6 overflow-y-auto">
-                        <form id="newPatientForm">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label for="prenom" class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
-                                    <input type="text" id="prenom" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <label for="nom" class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-                                    <input type="text" id="nom" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label for="dateNaissance" class="block text-sm font-medium text-gray-700 mb-1">Date de naissance</label>
-                                    <input type="date" id="dateNaissance" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sexe</label>
-                                    <div class="flex space-x-4 mt-2">
-                                        <div class="flex items-center">
-                                            <input type="radio" id="sexeHomme" name="sexe" value="homme" class="mr-2">
-                                            <label for="sexeHomme" class="text-sm text-gray-700">Homme</label>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <input type="radio" id="sexeFemme" name="sexe" value="femme" class="mr-2">
-                                            <label for="sexeFemme" class="text-sm text-gray-700">Femme</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="telephone" class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                                <input type="tel" id="telephone" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                            </div>
-                            <div class="mb-4">
-                                <label for="pathologie" class="block text-sm font-medium text-gray-700 mb-1">Pathologie</label>
-                                <input type="text" id="pathologie" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                            </div>
-                            <div class="mb-4">
-                                <label for="seancesPrevues" class="block text-sm font-medium text-gray-700 mb-1">Nombre de séances prévues</label>
-                                <input type="number" id="seancesPrevues" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                            </div>
-                        </form>
-                    </div>
-                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                        <button id="cancelNewPatientBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                            Annuler
-                        </button>
-                        <button id="saveNewPatientBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            Enregistrer
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('modalsContainer').innerHTML = modalHTML;
-        document.getElementById('newPatientModal').classList.remove('hidden');
-
-        // Add event listeners
-        document.getElementById('closeNewPatientBtn').addEventListener('click', () => {
-            document.getElementById('newPatientModal').classList.add('hidden');
-        });
-
-        document.getElementById('cancelNewPatientBtn').addEventListener('click', () => {
-            document.getElementById('newPatientModal').classList.add('hidden');
-        });
-
-        document.getElementById('saveNewPatientBtn').addEventListener('click', async () => {
-            if (validatePatientForm()) {
-                try {
-                    const patientData = {
-                        nom: document.getElementById('nom').value.trim(),
-                        prenom: document.getElementById('prenom').value.trim(),
-                        sexe: document.querySelector('input[name="sexe"]:checked')?.value,
-                        telephone: document.getElementById('telephone').value.trim(),
-                        pathologie: document.getElementById('pathologie').value.trim(),
-                        dateNaissance: document.getElementById('dateNaissance').value,
-                        seancesPrevues: parseInt(document.getElementById('seancesPrevues').value),
-                        seancesEffectuees: 0
-                    };
-
-                    await createPatient(patientData);
-                    showNotification('success', 'Patient créé avec succès');
-                    document.getElementById('newPatientModal').classList.add('hidden');
-                    loadPatients();
-                } catch (error) {
-                    showNotification('error', 'Erreur lors de la création du patient');
-                }
+            if (patient) {
+                selectedPatient = patient;
+                openPatientRecords(patient);
             }
         });
-    }
+    });
 
-    function showEditPatientModal() {
-        if (!state.selectedPatient) return;
+    // Boutons de modification
+    document.querySelectorAll('.edit-patient-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const patientId = this.dataset.id;
+            const patient = await PatientAPI.getById(patientId);
 
-        const modalHTML = `
-            <div id="editPatientModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-                    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <h3 class="text-lg font-semibold text-gray-900">Modifier Patient</h3>
-                        <button id="closeEditPatientBtn" class="text-gray-400 hover:text-gray-500">
-                            <i class="ri-close-line"></i>
-                        </button>
-                    </div>
-                    <div class="p-6 overflow-y-auto">
-                        <form id="editPatientForm">
-                            <input type="hidden" id="editPatientId" value="${state.selectedPatient.id}">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label for="editPrenom" class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
-                                    <input type="text" id="editPrenom" value="${state.selectedPatient.prenom}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <label for="editNom" class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
-                                    <input type="text" id="editNom" value="${state.selectedPatient.nom}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label for="editDateNaissance" class="block text-sm font-medium text-gray-700 mb-1">Date de naissance</label>
-                                    <input type="date" id="editDateNaissance" value="${state.selectedPatient.dateNaissance}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sexe</label>
-                                    <div class="flex space-x-4 mt-2">
-                                        <div class="flex items-center">
-                                            <input type="radio" id="editSexeHomme" name="editSexe" value="homme" ${state.selectedPatient.sexe === 'homme' ? 'checked' : ''} class="mr-2">
-                                            <label for="editSexeHomme" class="text-sm text-gray-700">Homme</label>
-                                        </div>
-                                        <div class="flex items-center">
-                                            <input type="radio" id="editSexeFemme" name="editSexe" value="femme" ${state.selectedPatient.sexe === 'femme' ? 'checked' : ''} class="mr-2">
-                                            <label for="editSexeFemme" class="text-sm text-gray-700">Femme</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-4">
-                                <label for="editTelephone" class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                                <input type="tel" id="editTelephone" value="${state.selectedPatient.telephone}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                            </div>
-                            <div class="mb-4">
-                                <label for="editPathologie" class="block text-sm font-medium text-gray-700 mb-1">Pathologie</label>
-                                <input type="text" id="editPathologie" value="${state.selectedPatient.pathologie}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                            </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label for="editSeancesEffectuees" class="block text-sm font-medium text-gray-700 mb-1">Séances effectuées</label>
-                                    <input type="number" id="editSeancesEffectuees" min="0" value="${state.selectedPatient.seancesEffectuees}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                                <div>
-                                    <label for="editSeancesPrevues" class="block text-sm font-medium text-gray-700 mb-1">Séances prévues</label>
-                                    <input type="number" id="editSeancesPrevues" min="1" value="${state.selectedPatient.seancesPrevues}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500">
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-                        <button id="cancelEditPatientBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
-                            Annuler
-                        </button>
-                        <button id="saveEditPatientBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            Enregistrer
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('modalsContainer').innerHTML = modalHTML;
-        document.getElementById('editPatientModal').classList.remove('hidden');
-
-        // Add event listeners
-        document.getElementById('closeEditPatientBtn').addEventListener('click', () => {
-            document.getElementById('editPatientModal').classList.add('hidden');
-        });
-
-        document.getElementById('cancelEditPatientBtn').addEventListener('click', () => {
-            document.getElementById('editPatientModal').classList.add('hidden');
-        });
-
-        document.getElementById('saveEditPatientBtn').addEventListener('click', async () => {
-            if (validateEditPatientForm()) {
-                try {
-                    const patientData = {
-                        nom: document.getElementById('editNom').value.trim(),
-                        prenom: document.getElementById('editPrenom').value.trim(),
-                        sexe: document.querySelector('input[name="editSexe"]:checked')?.value,
-                        telephone: document.getElementById('editTelephone').value.trim(),
-                        pathologie: document.getElementById('editPathologie').value.trim(),
-                        dateNaissance: document.getElementById('editDateNaissance').value,
-                        seancesPrevues: parseInt(document.getElementById('editSeancesPrevues').value),
-                        seancesEffectuees: parseInt(document.getElementById('editSeancesEffectuees').value)
-                    };
-
-                    await updatePatient(state.selectedPatient.id, patientData);
-                    showNotification('success', 'Patient modifié avec succès');
-                    document.getElementById('editPatientModal').classList.add('hidden');
-                    loadPatients();
-                } catch (error) {
-                    showNotification('error', 'Erreur lors de la modification du patient');
-                }
+            if (patient) {
+                openEditPatientModal(patient);
             }
         });
-    }
+    });
 
-    function showPatientDetailsModal() {
-        if (!state.selectedPatient) return;
+    // Boutons de suppression
+    document.querySelectorAll('.delete-patient-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const patientId = this.dataset.id;
+            const patient = await PatientAPI.getById(patientId);
 
-        const modalHTML = `
-            <div id="patientDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-                    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 mr-3">
-                                <span class="font-medium">${state.selectedPatient.avatar}</span>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-semibold text-gray-900">${state.selectedPatient.prenom} ${state.selectedPatient.nom}</h3>
-                                <div class="text-sm text-gray-500">ID: ${state.selectedPatient.id}</div>
-                            </div>
-                        </div>
-                        <button id="closePatientDetailsBtn" class="text-gray-400 hover:text-gray-500">
-                            <i class="ri-close-line"></i>
-                        </button>
-                    </div>
-                    <div class="p-6 overflow-y-auto">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="text-md font-medium text-gray-800 mb-4">Informations du patient</h4>
-                                <div class="space-y-4">
-                                    <div>
-                                        <p class="text-sm text-gray-500">Date de naissance</p>
-                                        <p class="text-sm text-gray-800">${formatDate(state.selectedPatient.dateNaissance)} (${calculateAge(state.selectedPatient.dateNaissance)} ans)</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm text-gray-500">Sexe</p>
-                                        <p class="text-sm text-gray-800">${state.selectedPatient.sexe === 'homme' ? 'Homme' : 'Femme'}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm text-gray-500">Téléphone</p>
-                                        <p class="text-sm text-gray-800">${state.selectedPatient.telephone}</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm text-gray-500">Pathologie</p>
-                                        <p class="text-sm text-gray-800">${state.selectedPatient.pathologie}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <h4 class="text-md font-medium text-gray-800 mb-4">Suivi des séances</h4>
-                                <div class="mb-4">
-                                    <div class="flex justify-between items-center mb-1">
-                                        <span class="text-sm font-medium text-gray-700">Progression</span>
-                                        <span class="text-sm text-gray-500">${state.selectedPatient.seancesEffectuees}/${state.selectedPatient.seancesPrevues} séances</span>
-                                    </div>
-                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                        <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${(state.selectedPatient.seancesEffectuees / state.selectedPatient.seancesPrevues) * 100}%"></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500">Statut</p>
-                                    <p class="text-sm">
-                                        <span class="status-badge ${getStatusClass(state.selectedPatient.statut)}">
-                                            ${getStatusLabel(state.selectedPatient.statut)}
-                                        </span>
-                                    </p>
-                                </div>
-                                <div class="mt-4">
-                                    <p class="text-sm text-gray-500">Dernière visite</p>
-                                    <p class="text-sm text-gray-800">${formatDate(state.selectedPatient.derniereVisite)}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="px-6 py-4 border-t border-gray-200 flex justify-end">
-                        <button id="closePatientDetailsBtn2" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            Fermer
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('modalsContainer').innerHTML = modalHTML;
-        document.getElementById('patientDetailsModal').classList.remove('hidden');
-
-        // Add event listeners
-        document.getElementById('closePatientDetailsBtn').addEventListener('click', () => {
-            document.getElementById('patientDetailsModal').classList.add('hidden');
-        });
-
-        document.getElementById('closePatientDetailsBtn2').addEventListener('click', () => {
-            document.getElementById('patientDetailsModal').classList.add('hidden');
-        });
-    }
-
-    function showDeleteConfirmationModal() {
-        if (!state.selectedPatient) return;
-
-        Swal.fire({
-            title: 'Confirmer la suppression',
-            text: `Êtes-vous sûr de vouloir supprimer ${state.selectedPatient.prenom} ${state.selectedPatient.nom} ?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Oui, supprimer',
-            cancelButtonText: 'Annuler'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    await deletePatient(state.selectedPatient.id);
-                    showNotification('success', 'Patient supprimé avec succès');
-                    loadPatients();
-                } catch (error) {
-                    showNotification('error', 'Erreur lors de la suppression du patient');
-                }
+            if (patient) {
+                selectedPatient = patient;
+                document.getElementById('deleteConfirmModal').classList.remove('hidden');
             }
         });
+    });
+}
+
+// Modals
+function openPatientRecords(patient) {
+    // Mise à jour des informations d'en-tête
+    document.getElementById('patientModalName').textContent = `${patient.prenom || ''} ${patient.nom || ''}`;
+    document.getElementById('patientModalId').textContent = `ID: ${patient.id}`;
+    document.getElementById('patientModalAvatar').textContent = patient.avatar || '';
+
+    const avatarColor = getAvatarColor(0);
+    document.getElementById('patientModalAvatar').className = `w-10 h-10 rounded-full ${avatarColor.bg} flex items-center justify-center ${avatarColor.text} mr-3`;
+
+    // Calcul de la progression
+    const total = patient.seancesPrevues || 1;
+    const done = patient.seancesEffectuees || 0;
+    const progressPercent = Math.round((done / total) * 100);
+
+    // Mise à jour de la barre de progression
+    document.getElementById('patientRecordSessionsProgress').style.width = `${progressPercent}%`;
+    document.getElementById('patientRecordSessionsText').textContent = `${done}/${total} séances`;
+    document.getElementById('patientRecordSessions').textContent = `${total} séances`;
+
+    // Historique des séances (placeholder)
+    const sessionHistoryContainer = document.getElementById('patientSessionHistory');
+    sessionHistoryContainer.innerHTML = `
+        <div class="p-4 text-center text-gray-500">
+            Aucune séance enregistrée.
+        </div>
+    `;
+
+    // Anamnèses et comptes rendus vides
+    document.getElementById('anamneseList').innerHTML = `
+        <div class="p-4 text-center text-gray-500">
+            Aucune anamnèse enregistrée.
+        </div>
+    `;
+
+    document.getElementById('compteRenduList').innerHTML = `
+        <div class="p-4 text-center text-gray-500">
+            Aucun compte rendu enregistré.
+        </div>
+    `;
+
+    // Onglet par défaut : séances
+    document.querySelectorAll('.records-tab-button').forEach(btn => {
+        btn.classList.remove('active', 'border-primary', 'text-primary');
+        btn.classList.add('border-transparent', 'text-gray-500');
+    });
+
+    document.querySelectorAll('.records-tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+
+    document.querySelector('.records-tab-button[data-tab="sessions"]').classList.add('active', 'border-primary', 'text-primary');
+    document.querySelector('.records-tab-button[data-tab="sessions"]').classList.remove('border-transparent', 'text-gray-500');
+    document.getElementById('sessionsTab').classList.remove('hidden');
+
+    // Afficher le modal
+    document.getElementById('patientRecordsModal').classList.remove('hidden');
+}
+
+function openEditPatientModal(patient) {
+    // Pré-remplir les champs
+    document.getElementById('editPatientId').value = patient.id;
+    document.getElementById('editFirstName').value = patient.prenom || '';
+    document.getElementById('editLastName').value = patient.nom || '';
+    document.getElementById('editBirthDate').value = patient.dateNaissance || '';
+    document.getElementById('editPhone').value = patient.telephone || '';
+    document.getElementById('editPathology').value = patient.pathologie || '';
+    document.getElementById('editSessionCount').value = patient.seancesEffectuees || 0;
+    document.getElementById('editTotalSessions').value = patient.seancesPrevues || 0;
+
+    // Sexe
+    document.querySelectorAll('#editPatientModal .custom-radio').forEach(radio => {
+        radio.classList.remove('checked');
+    });
+
+    if (patient.sexe === 'M') {
+        document.getElementById('editGenderMale').classList.add('checked');
+    } else if (patient.sexe === 'F') {
+        document.getElementById('editGenderFemale').classList.add('checked');
     }
 
-    // Form Validation
-    function validatePatientForm() {
-        let isValid = true;
-        const requiredFields = ['prenom', 'nom', 'dateNaissance', 'telephone', 'pathologie', 'seancesPrevues'];
+    // Afficher le modal
+    document.getElementById('editPatientModal').classList.remove('hidden');
+}
 
-        requiredFields.forEach(field => {
-            const element = document.getElementById(field);
-            if (!element.value.trim()) {
-                element.classList.add('border-red-500');
-                isValid = false;
-            } else {
-                element.classList.remove('border-red-500');
-            }
-        });
+function openAddSessionsModal(patient) {
+    if (!patient) return;
 
-        if (!document.querySelector('input[name="sexe"]:checked')) {
-            document.getElementById('sexeHomme').closest('div').classList.add('text-red-500');
-            document.getElementById('sexeFemme').closest('div').classList.add('text-red-500');
-            isValid = false;
+    document.getElementById('currentSessionsDisplay').value = patient.seancesEffectuees || 0;
+    document.getElementById('additionalSessions').value = 1;
+    document.getElementById('totalSessionsDisplay').value = (patient.seancesEffectuees || 0) + 1;
+
+    document.getElementById('addSessionsModal').classList.remove('hidden');
+}
+
+// Validation et sauvegarde
+function validatePatientForm(isEdit = false) {
+    const prefix = isEdit ? 'edit' : '';
+    const firstNameId = isEdit ? 'editFirstName' : 'firstName';
+    const lastNameId = isEdit ? 'editLastName' : 'lastName';
+    const phoneId = isEdit ? 'editPhone' : 'phone';
+    const pathologyId = isEdit ? 'editPathology' : 'pathology';
+    const totalSessionsId = isEdit ? 'editTotalSessions' : 'totalSessions';
+    const birthDateId = isEdit ? 'editBirthDate' : 'birthDate';
+
+    const requiredFields = [firstNameId, lastNameId, phoneId, pathologyId, totalSessionsId, birthDateId];
+    let valid = true;
+
+    requiredFields.forEach(fieldId => {
+        const input = document.getElementById(fieldId);
+        if (!input.value.trim()) {
+            input.classList.add('border-red-500');
+            valid = false;
         } else {
-            document.getElementById('sexeHomme').closest('div').classList.remove('text-red-500');
-            document.getElementById('sexeFemme').closest('div').classList.remove('text-red-500');
+            input.classList.remove('border-red-500');
         }
+    });
 
-        if (!isValid) {
-            showNotification('error', 'Veuillez remplir tous les champs obligatoires');
-        }
-
-        return isValid;
+    // Vérifier le sexe
+    const modalId = isEdit ? 'editPatientModal' : 'newPatientModal';
+    const genderSelected = document.querySelector(`#${modalId} .custom-radio.checked`);
+    if (!genderSelected) {
+        valid = false;
+        document.querySelectorAll(`#${modalId} .custom-radio`).forEach(r => {
+            r.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+        });
+    } else {
+        document.querySelectorAll(`#${modalId} .custom-radio`).forEach(r => {
+            r.style.borderColor = '#d1d5db';
+        });
     }
 
-    function validateEditPatientForm() {
-        let isValid = true;
-        const requiredFields = ['editPrenom', 'editNom', 'editDateNaissance', 'editTelephone', 'editPathologie', 'editSeancesPrevues', 'editSeancesEffectuees'];
+    return valid;
+}
 
-        requiredFields.forEach(field => {
-            const element = document.getElementById(field);
-            if (!element.value.trim()) {
-                element.classList.add('border-red-500');
-                isValid = false;
-            } else {
-                element.classList.remove('border-red-500');
+async function saveNewPatient() {
+    if (!validatePatientForm()) {
+        showNotification('error', 'Veuillez remplir tous les champs obligatoires.');
+        return;
+    }
+
+    const genderSelected = document.querySelector('#newPatientModal .custom-radio.checked');
+
+    const patientData = {
+        prenom: document.getElementById('firstName').value.trim(),
+        nom: document.getElementById('lastName').value.trim(),
+        dateNaissance: document.getElementById('birthDate').value,
+        sexe: genderSelected.dataset.gender,
+        telephone: document.getElementById('phone').value.trim(),
+        pathologie: document.getElementById('pathology').value.trim(),
+        seancesPrevues: parseInt(document.getElementById('totalSessions').value) || 0
+    };
+
+    try {
+        await PatientAPI.create(patientData);
+        document.getElementById('newPatientModal').classList.add('hidden');
+        showNotification('success', 'Patient ajouté avec succès!');
+        await loadPatients();
+    } catch (error) {
+        showNotification('error', 'Erreur lors de la création du patient');
+    }
+}
+
+async function saveEditedPatient() {
+    if (!validatePatientForm(true)) {
+        showNotification('error', 'Veuillez remplir tous les champs obligatoires.');
+        return;
+    }
+
+    const patientId = document.getElementById('editPatientId').value;
+    const genderSelected = document.querySelector('#editPatientModal .custom-radio.checked');
+
+    const patientData = {
+        prenom: document.getElementById('editFirstName').value.trim(),
+        nom: document.getElementById('editLastName').value.trim(),
+        dateNaissance: document.getElementById('editBirthDate').value,
+        sexe: genderSelected.dataset.gender,
+        telephone: document.getElementById('editPhone').value.trim(),
+        pathologie: document.getElementById('editPathology').value.trim(),
+        seancesEffectuees: parseInt(document.getElementById('editSessionCount').value) || 0,
+        seancesPrevues: parseInt(document.getElementById('editTotalSessions').value) || 0
+    };
+
+    try {
+        await PatientAPI.update(patientId, patientData);
+        document.getElementById('editPatientModal').classList.add('hidden');
+        showNotification('success', 'Patient modifié avec succès!');
+        await loadPatients();
+    } catch (error) {
+        showNotification('error', 'Erreur lors de la modification du patient');
+    }
+}
+
+async function deletePatient() {
+    if (!selectedPatient) return;
+
+    try {
+        await PatientAPI.delete(selectedPatient.id);
+        document.getElementById('deleteConfirmModal').classList.add('hidden');
+        showNotification('success', 'Patient supprimé avec succès!');
+        await loadPatients();
+    } catch (error) {
+        showNotification('error', 'Erreur lors de la suppression du patient');
+    }
+}
+
+async function addSessionToPatient() {
+    if (!selectedPatient) return;
+
+    const additionalSessions = parseInt(document.getElementById('additionalSessions').value) || 0;
+    if (additionalSessions <= 0) {
+        showNotification('error', 'Veuillez entrer un nombre valide de séances à ajouter');
+        return;
+    }
+
+    const newSessionCount = (selectedPatient.seancesEffectuees || 0) + additionalSessions;
+
+    const patientData = {
+        ...selectedPatient,
+        seancesEffectuees: newSessionCount
+    };
+
+    try {
+        const updatedPatient = await PatientAPI.update(selectedPatient.id, patientData);
+        selectedPatient = updatedPatient;
+
+        document.getElementById('addSessionsModal').classList.add('hidden');
+        showNotification('success', `${additionalSessions} séance(s) ajoutée(s) avec succès.`);
+
+        // Recharger et réafficher le dossier patient
+        await loadPatients();
+        openPatientRecords(updatedPatient);
+    } catch (error) {
+        showNotification('error', 'Erreur lors de l\'ajout de séances');
+    }
+}
+
+// Notifications
+function showNotification(type, message) {
+    const notification = document.getElementById('notification');
+    const notificationTitle = document.getElementById('notificationTitle');
+    const notificationMessage = document.getElementById('notificationMessage');
+    const notificationIcon = notification.querySelector('.notification-icon svg');
+
+    switch(type) {
+        case 'success':
+            notification.style.borderLeftColor = '#10b981';
+            notification.querySelector('.notification-icon').style.color = '#10b981';
+            notificationIcon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />';
+            notificationTitle.textContent = 'Succès';
+            break;
+        case 'error':
+            notification.style.borderLeftColor = '#ef4444';
+            notification.querySelector('.notification-icon').style.color = '#ef4444';
+            notificationIcon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />';
+            notificationTitle.textContent = 'Erreur';
+            break;
+        case 'info':
+            notification.style.borderLeftColor = '#3b82f6';
+            notification.querySelector('.notification-icon').style.color = '#3b82f6';
+            notificationIcon.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />';
+            notificationTitle.textContent = 'Information';
+            break;
+    }
+
+    notificationMessage.textContent = message;
+    notification.classList.add('show');
+
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 5000);
+}
+
+function resetForm(formId) {
+    const form = document.getElementById(formId);
+    form.reset();
+
+    // Réinitialiser les radios
+    form.querySelectorAll('.custom-radio').forEach(radio => {
+        radio.classList.remove('checked');
+        radio.style.borderColor = '#d1d5db';
+    });
+
+    // Réinitialiser les bordures d'erreur
+    form.querySelectorAll('.border-red-500').forEach(el => {
+        el.classList.remove('border-red-500');
+    });
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', async function () {
+    // Charger la sidebar
+    try {
+        const response = await fetch('partials/sidebar.html');
+        const sidebarHTML = await response.text();
+        document.getElementById('sidebar-container').innerHTML = sidebarHTML;
+
+        // Marquer la page active
+        document.querySelectorAll('.nav-link').forEach(link => {
+            if (link.dataset.tab === 'patients') {
+                link.classList.add('active');
             }
         });
+    } catch (error) {
+        console.error("Erreur lors du chargement de la sidebar :", error);
+    }
 
-        if (!document.querySelector('input[name="editSexe"]:checked')) {
-            document.getElementById('editSexeHomme').closest('div').classList.add('text-red-500');
-            document.getElementById('editSexeFemme').closest('div').classList.add('text-red-500');
-            isValid = false;
+    // Afficher la date actuelle
+    const currentDate = document.getElementById('currentDate');
+    const today = new Date();
+    currentDate.textContent = today.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+
+    // Sidebar toggle
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const openSidebarBtn = document.getElementById('openSidebarBtn');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    function toggleSidebar() {
+        const isOpen = !sidebar.classList.contains('sidebar-hidden');
+
+        if (isOpen) {
+            sidebar.classList.add('sidebar-hidden');
+            mainContent.classList.remove('ml-64');
+            openSidebarBtn.classList.remove('hidden');
+            closeSidebarBtn.classList.add('hidden');
         } else {
-            document.getElementById('editSexeHomme').closest('div').classList.remove('text-red-500');
-            document.getElementById('editSexeFemme').closest('div').classList.remove('text-red-500');
+            sidebar.classList.remove('sidebar-hidden');
+            mainContent.classList.add('ml-64');
+            openSidebarBtn.classList.add('hidden');
+            closeSidebarBtn.classList.remove('hidden');
         }
+    }
 
-        if (!isValid) {
-            showNotification('error', 'Veuillez remplir tous les champs obligatoires');
+    openSidebarBtn.addEventListener('click', toggleSidebar);
+    closeSidebarBtn.addEventListener('click', toggleSidebar);
+
+    // Initialisation sidebar ouverte
+    sidebar.classList.remove('sidebar-hidden');
+    mainContent.classList.add('ml-64');
+    openSidebarBtn.classList.add('hidden');
+    closeSidebarBtn.classList.remove('hidden');
+
+    // Documents dropdown
+    const documentsDropdown = document.getElementById('documentsDropdown');
+    const documentsSubmenu = document.getElementById('documentsSubmenu');
+    const dropdownArrow = document.getElementById('dropdownArrow');
+
+    documentsDropdown.addEventListener('click', function (e) {
+        e.preventDefault();
+        documentsSubmenu.classList.toggle('show');
+
+        if (documentsSubmenu.classList.contains('show')) {
+            dropdownArrow.classList.remove('ri-arrow-down-s-line');
+            dropdownArrow.classList.add('ri-arrow-up-s-line');
+        } else {
+            dropdownArrow.classList.remove('ri-arrow-up-s-line');
+            dropdownArrow.classList.add('ri-arrow-down-s-line');
         }
+    });
 
-        return isValid;
-    }
+    // Filtres
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function () {
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+            this.classList.add('active');
+            this.classList.remove('bg-gray-100', 'text-gray-700');
 
-    // Utility Functions
-    function calculateAge(birthDate) {
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
-
-        return age;
-    }
-
-    function formatDate(dateString) {
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString('fr-FR', options);
-    }
-
-    function getStatusClass(status) {
-        return {
-            'actif': 'bg-green-100 text-green-800',
-            'inactif': 'bg-gray-100 text-gray-800',
-            'nouveau': 'bg-yellow-100 text-yellow-800'
-        }[status.toLowerCase()] || 'bg-blue-100 text-blue-800';
-    }
-
-    function getStatusLabel(status) {
-        return {
-            'actif': 'Actif',
-            'inactif': 'Inactif',
-            'nouveau': 'Nouveau'
-        }[status.toLowerCase()] || status;
-    }
-
-    function showNotification(type, message) {
-        Swal.fire({
-            icon: type,
-            text: message,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000
+            currentFilter = this.dataset.filter;
+            currentPage = 1;
+            filterPatients();
         });
-    }
+    });
 
-    function debounce(func, wait) {
-        let timeout;
-        return function() {
-            const context = this, args = arguments;
-            clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(context, args), wait);
-        };
-    }
+    // Recherche avec debounce
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            filterPatients();
+        }, 300);
+    });
 
-    function updateCurrentDate() {
-        const today = new Date();
-        document.getElementById('currentDate').textContent = today.toLocaleDateString('fr-FR', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
+    // Dropdown de tri
+    const sortDropdownBtn = document.getElementById('sortDropdownBtn');
+    const sortDropdown = document.getElementById('sortDropdown');
+
+    sortDropdownBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        sortDropdown.classList.toggle('show');
+    });
+
+    document.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            currentSort = this.dataset.sort;
+            sortDropdownBtn.querySelector('span').textContent = 'Trier par: ' + this.textContent.trim();
+            sortDropdown.classList.remove('show');
+            filterPatients();
         });
-    }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!sortDropdownBtn.contains(e.target) && !sortDropdown.contains(e.target)) {
+            sortDropdown.classList.remove('show');
+        }
+    });
+
+    // Switcher vues
+    const listViewBtn = document.getElementById('listViewBtn');
+    const gridViewBtn = document.getElementById('gridViewBtn');
+    const tableView = document.getElementById('tableView');
+    const gridView = document.getElementById('gridView');
+    const gridPagination = document.getElementById('gridPagination');
+
+    listViewBtn.addEventListener('click', function () {
+        listViewBtn.classList.add('bg-gray-100');
+        gridViewBtn.classList.remove('bg-gray-100');
+        tableView.classList.remove('hidden');
+        gridView.classList.add('hidden');
+        gridPagination.classList.add('hidden');
+    });
+
+    gridViewBtn.addEventListener('click', function () {
+        gridViewBtn.classList.add('bg-gray-100');
+        listViewBtn.classList.remove('bg-gray-100');
+        tableView.classList.add('hidden');
+        gridView.classList.remove('hidden');
+        gridPagination.classList.remove('hidden');
+    });
+
+    // Event listeners des modals
+    setupModalEventListeners();
+
+    // Chargement initial des patients
+    loadPatients();
 });
+
+function setupModalEventListeners() {
+    // Modal Nouveau patient
+    document.getElementById('newPatientBtn').addEventListener('click', function() {
+        document.getElementById('newPatientModal').classList.remove('hidden');
+        resetForm('newPatientForm');
+    });
+
+    document.getElementById('closeNewPatientBtn').addEventListener('click', function() {
+        document.getElementById('newPatientModal').classList.add('hidden');
+    });
+
+    document.getElementById('cancelNewPatientBtn').addEventListener('click', function() {
+        document.getElementById('newPatientModal').classList.add('hidden');
+    });
+
+    document.getElementById('saveNewPatientBtn').addEventListener('click', saveNewPatient);
+
+    // Modal édition
+    document.getElementById('closeEditPatientBtn').addEventListener('click', function() {
+        document.getElementById('editPatientModal').classList.add('hidden');
+    });
+
+    document.getElementById('cancelEditPatientBtn').addEventListener('click', function() {
+        document.getElementById('editPatientModal').classList.add('hidden');
+    });
+
+    document.getElementById('saveEditPatientBtn').addEventListener('click', saveEditedPatient);
+
+    // Modal suppression
+    document.getElementById('cancelDeleteBtn').addEventListener('click', function() {
+        document.getElementById('deleteConfirmModal').classList.add('hidden');
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', deletePatient);
+
+    // Modal dossier patient
+    document.getElementById('closeRecordsModalBtn').addEventListener('click', function() {
+        document.getElementById('patientRecordsModal').classList.add('hidden');
+    });
+
+    // Onglets dossier patient
+    document.querySelectorAll('.records-tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+
+            document.querySelectorAll('.records-tab-button').forEach(btn => {
+                btn.classList.remove('active', 'border-primary', 'text-primary');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            document.querySelectorAll('.records-tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            this.classList.add('active', 'border-primary', 'text-primary');
+            this.classList.remove('border-transparent', 'text-gray-500');
+
+            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+        });
+    });
+
+    // Modal ajout séances
+    document.getElementById('addSessionBtn').addEventListener('click', function() {
+        openAddSessionsModal(selectedPatient);
+    });
+
+    document.getElementById('closeAddSessionsBtn').addEventListener('click', function() {
+        document.getElementById('addSessionsModal').classList.add('hidden');
+    });
+
+    document.getElementById('cancelAddSessionsBtn').addEventListener('click', function() {
+        document.getElementById('addSessionsModal').classList.add('hidden');
+    });
+
+    document.getElementById('submitAddSessionsBtn').addEventListener('click', addSessionToPatient);
+
+    // Mise à jour automatique du total lors de la saisie
+    document.getElementById('additionalSessions').addEventListener('input', function() {
+        const current = parseInt(document.getElementById('currentSessionsDisplay').value) || 0;
+        const additional = parseInt(this.value) || 0;
+        document.getElementById('totalSessionsDisplay').value = current + additional;
+    });
+
+    // Gestion des radios personnalisés
+    document.querySelectorAll('.custom-radio').forEach(radio => {
+        radio.addEventListener('click', function() {
+            const form = this.closest('form');
+            form.querySelectorAll('.custom-radio').forEach(r => {
+                r.classList.remove('checked');
+            });
+            this.classList.add('checked');
+        });
+    });
+
+    // Nouveaux boutons pour créer des documents
+    document.getElementById('newAnamneseForPatientBtn')?.addEventListener('click', function() {
+        showNotification('info', 'Redirection vers le formulaire d\'anamnèse');
+    });
+
+    document.getElementById('newCompteRenduForPatientBtn')?.addEventListener('click', function() {
+        showNotification('info', 'Redirection vers le formulaire de compte rendu');
+    });
+}

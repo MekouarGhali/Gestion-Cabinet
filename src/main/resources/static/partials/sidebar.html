@@ -1,61 +1,99 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-<div class="p-5 border-b border-gray-200 flex justify-between items-center">
-    <h1 class="text-2xl font-pacifico text-blue-600">Cabinet Médical</h1>
-    <button id="closeSidebarBtn" class="burger-btn text-gray-600 md:hidden">
-        <i class="ri-close-line text-xl"></i>
-    </button>
-</div>
-<nav class="flex-1 overflow-y-auto py-4">
-    <ul>
-        <li class="mb-1">
-            <a href="/dashboard.html" class="nav-link flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="dashboard">
-                <i class="ri-dashboard-line mr-3"></i>
-                <span>Tableau de Bord</span>
-            </a>
-        </li>
-        <li class="mb-1">
-            <a href="/patient.html" class="nav-link flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="patients">
-            <i class="ri-user-line mr-3"></i>
-                <span>Patients</span>
-            </a>
-        </li>
-        <li class="mb-1">
-            <a href="/rendezvous.html" class="nav-link flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="appointments">
-                <i class="ri-calendar-2-line mr-3"></i>
-                <span>Rendez-Vous</span>
-            </a>
-        </li>
-        <li class="mb-1">
-            <button id="documentsDropdown" class="w-full flex items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-50">
-                <div class="flex items-center">
-                    <i class="ri-file-list-line mr-3"></i>
-                    <span>Documents</span>
-                </div>
-                <i class="ri-arrow-down-s-line transition-transform duration-200"></i>
-            </button>
-            <ul id="documentsSubmenu" class="pl-4 hidden">
-                <li class="mb-1"><a href="/factures.html" class="block py-2 text-sm text-gray-600 hover:text-blue-600 pl-8">Factures</a></li>
-                <li class="mb-1"><a href="/devis.html" class="block py-2 text-sm text-gray-600 hover:text-blue-600 pl-8">Devis</a></li>
-                <li class="mb-1"><a href="/anamnese.html" class="block py-2 text-sm text-gray-600 hover:text-blue-600 pl-8">Anamnèse</a></li>
-                <li><a href="/compte-rendu.html" class="block py-2 text-sm text-gray-600 hover:text-blue-600 pl-8">Compte rendu</a></li>
-            </ul>
-        </li>
-        <li>
-            <a href="/revenus.html" class="nav-link flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="revenue">
-                <i class="ri-line-chart-line mr-3"></i>
-                <span>Mes Revenus</span>
-            </a>
-        </li>
-    </ul>
-</nav>
-<div id="sidebar-doctor-info" class="p-4 border-t border-gray-200">
-    <!-- Chargé dynamiquement par sidebar.js -->
-</div>
-</body>
-</html>
+<!-- Sidebar Navigation -->
+<aside id="sidebar" class="w-64 bg-white border-r border-gray-200 flex flex-col sidebar-fixed">
+    <div class="p-5 border-b border-gray-200 flex justify-between items-center">
+        <h1 class="text-2xl font-['Pacifico'] text-primary">Cabinet Médical</h1>
+        <button id="closeSidebarBtn" class="burger-btn text-gray-600 md:block">
+            <i class="ri-close-line text-xl"></i>
+        </button>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto py-4">
+        <ul>
+            <li class="mb-1">
+                <a href="/menu" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="dashboard">
+                    <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                        <i class="ri-dashboard-line"></i>
+                    </div>
+                    <span>Tableau de Bord</span>
+                </a>
+            </li>
+
+            <li class="mb-1">
+                <a href="/patients/page" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="patients">
+                    <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                        <i class="ri-user-line"></i>
+                    </div>
+                    <span>Patients</span>
+                </a>
+            </li>
+
+            <li class="mb-1">
+                <a href="/rendezvous/page" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="rendezvous">
+                    <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                        <i class="ri-calendar-2-line"></i>
+                    </div>
+                    <span>Rendez-Vous</span>
+                </a>
+            </li>
+
+            <li class="mb-1">
+                <button id="documentsDropdown" class="w-full flex items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-50">
+                    <div class="flex items-center">
+                        <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                            <i class="ri-file-list-line"></i>
+                        </div>
+                        <span>Documents</span>
+                    </div>
+                    <div class="w-5 h-5 flex items-center justify-center text-gray-500 transition-transform duration-200">
+                        <i id="dropdownArrow" class="ri-arrow-down-s-line"></i>
+                    </div>
+                </button>
+
+                <ul id="documentsSubmenu" class="pl-4">
+                    <li class="mb-1">
+                        <a href="/facture" class="block py-2 text-sm text-gray-600 hover:text-primary pl-8" data-tab="factures">
+                            Factures
+                        </a>
+                    </li>
+                    <li class="mb-1">
+                        <a href="/devis" class="block py-2 text-sm text-gray-600 hover:text-primary pl-8" data-tab="devis">
+                            Devis
+                        </a>
+                    </li>
+                    <li class="mb-1">
+                        <a href="/anamnese" class="block py-2 text-sm text-gray-600 hover:text-primary pl-8" data-tab="anamnese">
+                            Anamnèse
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/compte-rendu" class="block py-2 text-sm text-gray-600 hover:text-primary pl-8" data-tab="compte-rendu">
+                            Compte rendu
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li>
+                <a href="/revenus" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50" data-tab="revenus">
+                    <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                        <i class="ri-line-chart-line"></i>
+                    </div>
+                    <span>Mes Revenus</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- User Info Section -->
+    <div id="userInfo" class="p-4 border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
+        <div class="flex items-center">
+            <div id="userAvatar" class="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 mr-3">
+                <span class="font-medium">MZ</span>
+            </div>
+            <div>
+                <p id="userName" class="text-sm font-medium">Mekouar Zineb</p>
+                <p id="userProfession" class="text-xs text-gray-500">psychomotricienne</p>
+            </div>
+        </div>
+    </div>
+</aside>
