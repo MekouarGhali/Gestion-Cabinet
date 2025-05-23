@@ -51,8 +51,18 @@ public class PatientService {
         patient.setSeancesPrevues(patientDetails.getSeancesPrevues());
         patient.setSeancesEffectuees(patientDetails.getSeancesEffectuees());
 
-        // Mettre à jour le statut
-        updatePatientStatus(patient);
+        // LOGIQUE COMBINÉE : Switch + Séances
+        if (patientDetails.getStatut() != null && patientDetails.getStatut().equals("inactif")) {
+            // Si le statut envoyé est "inactif" (switch activé), on respecte ce choix
+            patient.setStatut("inactif");
+        } else if (patient.getSeancesEffectuees() >= patient.getSeancesPrevues()) {
+            // Si les séances sont terminées, forcer inactif même si le switch n'est pas activé
+            patient.setStatut("inactif");
+        } else if (patient.getSeancesEffectuees() > 0) {
+            patient.setStatut("actif");
+        } else {
+            patient.setStatut("nouveau");
+        }
 
         return repository.save(patient);
     }

@@ -5,7 +5,7 @@ const API_BASE_URL = '/api';
 let currentFilter = 'all';
 let currentSort = 'name-asc';
 let currentPage = 1;
-let itemsPerPage = 7;
+let itemsPerPage = 8;
 let filteredPatients = [];
 let selectedPatient = null;
 let allPatients = [];
@@ -107,15 +107,43 @@ class PatientAPI {
 
 // Utilitaires
 function calculateAge(birthDate) {
-    if (!birthDate) return 0;
+    if (!birthDate) return 'N/A';
+
     const today = new Date();
     const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-        age--;
+
+    // Si la date est dans le futur, retourner N/A (sera géré dans la validation)
+    if (birth > today) {
+        return 'N/A';
     }
-    return age;
+
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+    let days = today.getDate() - birth.getDate();
+
+    // Ajuster si les jours sont négatifs
+    if (days < 0) {
+        months--;
+        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += lastMonth.getDate();
+    }
+
+    // Ajuster si les mois sont négatifs
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+
+    // Si moins d'un an, afficher en mois
+    if (years === 0) {
+        if (months === 0) {
+            return days <= 1 ? '1 jour' : `${days} jours`;
+        }
+        return months === 1 ? '1 mois' : `${months} mois`;
+    }
+
+    // Si un an ou plus, afficher en années
+    return years === 1 ? '1 an' : `${years} ans`;
 }
 
 function formatDate(dateString) {
@@ -154,7 +182,6 @@ function getStatusLabel(status) {
         default: return 'Nouveau';
     }
 }
-
 // Gestion des patients
 async function loadPatients() {
     try {
@@ -174,17 +201,14 @@ async function filterPatients() {
             filteredPatients = await PatientAPI.getByStatus(currentFilter);
         }
 
-        // Appliquer la recherche si nécessaire
         const searchTerm = document.getElementById('searchInput').value.trim();
         if (searchTerm) {
             filteredPatients = await PatientAPI.search(searchTerm);
-            // Filtrer encore par statut si ce n'est pas "all"
             if (currentFilter !== 'all') {
                 filteredPatients = filteredPatients.filter(p => p.statut?.toLowerCase() === currentFilter);
             }
         }
 
-        // Tri
         sortPatients();
         updatePatientsList();
     } catch (error) {
@@ -203,7 +227,12 @@ function sortPatients() {
             case 'date':
                 return new Date(b.derniereVisite || 0) - new Date(a.derniereVisite || 0);
             case 'age':
-                return calculateAge(a.dateNaissance) - calculateAge(b.dateNaissance);
+                const ageA = calculateAge(a.dateNaissance);
+                const ageB = calculateAge(b.dateNaissance);
+                // Extraire les nombres pour la comparaison
+                const numA = parseInt(ageA) || 0;
+                const numB = parseInt(ageB) || 0;
+                return numA - numB;
             default:
                 return 0;
         }
@@ -211,11 +240,9 @@ function sortPatients() {
 }
 
 function updatePatientsList() {
-    // Mise à jour des compteurs
     document.getElementById('totalPatients').textContent = filteredPatients.length;
     document.getElementById('gridTotalPatients').textContent = filteredPatients.length;
 
-    // Pagination
     const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
 
     if (currentPage > totalPages && totalPages > 0) {
@@ -232,7 +259,6 @@ function updatePatientsList() {
 
     const currentPagePatients = filteredPatients.slice(start, end);
 
-    // Mise à jour des vues
     renderTableView(currentPagePatients);
     renderGridView(currentPagePatients);
     createPagination(totalPages);
@@ -275,7 +301,7 @@ function renderTableView(patients) {
                 </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                ${age} ans
+                ${age}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                 ${patient.telephone || 'N/A'}
@@ -353,7 +379,7 @@ function renderGridView(patients) {
                         <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-400">
                             <i class="ri-calendar-line"></i>
                         </div>
-                        <span>${age} ans</span>
+                        <span>${age}</span>
                     </div>
                     <div class="flex items-center">
                         <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-400">
@@ -410,7 +436,6 @@ function createPagination(totalPages) {
     if (totalPages <= 1) return;
 
     function createPaginationButtons(container) {
-        // Bouton Précédent
         const prevBtn = document.createElement('button');
         prevBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm text-gray-700 bg-white ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`;
         prevBtn.innerHTML = 'Précédent';
@@ -425,7 +450,6 @@ function createPagination(totalPages) {
 
         container.appendChild(prevBtn);
 
-        // Numéros de pages
         const maxVisiblePages = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
         let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
@@ -449,7 +473,6 @@ function createPagination(totalPages) {
             container.appendChild(pageBtn);
         }
 
-        // Bouton Suivant
         const nextBtn = document.createElement('button');
         nextBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm text-gray-700 bg-white ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`;
         nextBtn.innerHTML = 'Suivant';
@@ -470,7 +493,6 @@ function createPagination(totalPages) {
 }
 
 function addButtonEventListeners() {
-    // Boutons de visualisation du dossier
     document.querySelectorAll('.view-patient-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const patientId = this.dataset.id;
@@ -483,7 +505,6 @@ function addButtonEventListeners() {
         });
     });
 
-    // Boutons de modification
     document.querySelectorAll('.edit-patient-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const patientId = this.dataset.id;
@@ -495,7 +516,6 @@ function addButtonEventListeners() {
         });
     });
 
-    // Boutons de suppression
     document.querySelectorAll('.delete-patient-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const patientId = this.dataset.id;
@@ -511,7 +531,6 @@ function addButtonEventListeners() {
 
 // Modals
 function openPatientRecords(patient) {
-    // Mise à jour des informations d'en-tête
     document.getElementById('patientModalName').textContent = `${patient.prenom || ''} ${patient.nom || ''}`;
     document.getElementById('patientModalId').textContent = `ID: ${patient.id}`;
     document.getElementById('patientModalAvatar').textContent = patient.avatar || '';
@@ -519,17 +538,14 @@ function openPatientRecords(patient) {
     const avatarColor = getAvatarColor(0);
     document.getElementById('patientModalAvatar').className = `w-10 h-10 rounded-full ${avatarColor.bg} flex items-center justify-center ${avatarColor.text} mr-3`;
 
-    // Calcul de la progression
     const total = patient.seancesPrevues || 1;
     const done = patient.seancesEffectuees || 0;
     const progressPercent = Math.round((done / total) * 100);
 
-    // Mise à jour de la barre de progression
     document.getElementById('patientRecordSessionsProgress').style.width = `${progressPercent}%`;
     document.getElementById('patientRecordSessionsText').textContent = `${done}/${total} séances`;
     document.getElementById('patientRecordSessions').textContent = `${total} séances`;
 
-    // Historique des séances (placeholder)
     const sessionHistoryContainer = document.getElementById('patientSessionHistory');
     sessionHistoryContainer.innerHTML = `
         <div class="p-4 text-center text-gray-500">
@@ -537,7 +553,6 @@ function openPatientRecords(patient) {
         </div>
     `;
 
-    // Anamnèses et comptes rendus vides
     document.getElementById('anamneseList').innerHTML = `
         <div class="p-4 text-center text-gray-500">
             Aucune anamnèse enregistrée.
@@ -550,7 +565,6 @@ function openPatientRecords(patient) {
         </div>
     `;
 
-    // Onglet par défaut : séances
     document.querySelectorAll('.records-tab-button').forEach(btn => {
         btn.classList.remove('active', 'border-primary', 'text-primary');
         btn.classList.add('border-transparent', 'text-gray-500');
@@ -564,7 +578,6 @@ function openPatientRecords(patient) {
     document.querySelector('.records-tab-button[data-tab="sessions"]').classList.remove('border-transparent', 'text-gray-500');
     document.getElementById('sessionsTab').classList.remove('hidden');
 
-    // Afficher le modal
     document.getElementById('patientRecordsModal').classList.remove('hidden');
 }
 
@@ -590,6 +603,16 @@ function openEditPatientModal(patient) {
         document.getElementById('editGenderFemale').classList.add('checked');
     }
 
+    // Switch - CONSERVER l'état du patient
+    const activeSwitch = document.getElementById('editActiveStatus');
+
+    // NE PAS réinitialiser ! Juste définir selon le statut actuel
+    if (patient.statut === 'inactif') {
+        activeSwitch.classList.add('checked');
+    } else {
+        activeSwitch.classList.remove('checked');
+    }
+
     // Afficher le modal
     document.getElementById('editPatientModal').classList.remove('hidden');
 }
@@ -597,9 +620,9 @@ function openEditPatientModal(patient) {
 function openAddSessionsModal(patient) {
     if (!patient) return;
 
-    document.getElementById('currentSessionsDisplay').value = patient.seancesEffectuees || 0;
+    document.getElementById('currentSessionsDisplay').value = patient.seancesPrevues || 0;
     document.getElementById('additionalSessions').value = 1;
-    document.getElementById('totalSessionsDisplay').value = (patient.seancesEffectuees || 0) + 1;
+    document.getElementById('totalSessionsDisplay').value = (patient.seancesPrevues || 0) + 1;
 
     document.getElementById('addSessionsModal').classList.remove('hidden');
 }
@@ -616,22 +639,42 @@ function validatePatientForm(isEdit = false) {
 
     const requiredFields = [firstNameId, lastNameId, phoneId, pathologyId, totalSessionsId, birthDateId];
     let valid = true;
+    let hasEmptyFields = false;
+    let hasFutureDate = false;
 
+    // Vérifier les champs vides
     requiredFields.forEach(fieldId => {
         const input = document.getElementById(fieldId);
         if (!input.value.trim()) {
             input.classList.add('border-red-500');
             valid = false;
+            hasEmptyFields = true;
         } else {
             input.classList.remove('border-red-500');
         }
     });
+
+    // Validation spéciale pour la date de naissance
+    const birthDateInput = document.getElementById(birthDateId);
+    if (birthDateInput.value) {
+        const today = new Date();
+        const birthDate = new Date(birthDateInput.value);
+
+        if (birthDate > today) {
+            birthDateInput.classList.add('border-red-500');
+            valid = false;
+            hasFutureDate = true;
+        } else {
+            birthDateInput.classList.remove('border-red-500');
+        }
+    }
 
     // Vérifier le sexe
     const modalId = isEdit ? 'editPatientModal' : 'newPatientModal';
     const genderSelected = document.querySelector(`#${modalId} .custom-radio.checked`);
     if (!genderSelected) {
         valid = false;
+        hasEmptyFields = true;
         document.querySelectorAll(`#${modalId} .custom-radio`).forEach(r => {
             r.style.borderColor = 'rgba(239, 68, 68, 0.5)';
         });
@@ -641,13 +684,21 @@ function validatePatientForm(isEdit = false) {
         });
     }
 
+    // Afficher le bon message d'erreur selon le problème
+    if (!valid) {
+        if (hasEmptyFields) {
+            showNotification('error', 'Veuillez remplir tous les champs obligatoires.');
+        } else if (hasFutureDate) {
+            showNotification('error', 'La date de naissance ne peut pas être dans le futur.');
+        }
+    }
+
     return valid;
 }
 
 async function saveNewPatient() {
     if (!validatePatientForm()) {
-        showNotification('error', 'Veuillez remplir tous les champs obligatoires.');
-        return;
+        return; // Le message d'erreur est déjà affiché dans validatePatientForm
     }
 
     const genderSelected = document.querySelector('#newPatientModal .custom-radio.checked');
@@ -674,12 +725,28 @@ async function saveNewPatient() {
 
 async function saveEditedPatient() {
     if (!validatePatientForm(true)) {
-        showNotification('error', 'Veuillez remplir tous les champs obligatoires.');
-        return;
+        return; // Le message d'erreur est déjà affiché dans validatePatientForm
     }
 
     const patientId = document.getElementById('editPatientId').value;
     const genderSelected = document.querySelector('#editPatientModal .custom-radio.checked');
+
+    // Récupération de l'état du switch
+    const activeSwitch = document.getElementById('editActiveStatus');
+    const isSwitchChecked = activeSwitch.classList.contains('checked');
+    const sessionsDone = parseInt(document.getElementById('editSessionCount').value) || 0;
+
+    console.log('Switch activé:', isSwitchChecked); // Pour debug
+
+    // Le switch a la priorité
+    let newStatus;
+    if (isSwitchChecked) {
+        newStatus = 'inactif';
+    } else {
+        newStatus = sessionsDone > 0 ? 'actif' : 'nouveau';
+    }
+
+    console.log('Nouveau statut:', newStatus); // Pour debug
 
     const patientData = {
         prenom: document.getElementById('editFirstName').value.trim(),
@@ -688,14 +755,16 @@ async function saveEditedPatient() {
         sexe: genderSelected.dataset.gender,
         telephone: document.getElementById('editPhone').value.trim(),
         pathologie: document.getElementById('editPathology').value.trim(),
-        seancesEffectuees: parseInt(document.getElementById('editSessionCount').value) || 0,
-        seancesPrevues: parseInt(document.getElementById('editTotalSessions').value) || 0
+        seancesEffectuees: sessionsDone,
+        seancesPrevues: parseInt(document.getElementById('editTotalSessions').value) || 0,
+        statut: newStatus
     };
 
     try {
-        await PatientAPI.update(patientId, patientData);
+        const updatedPatient = await PatientAPI.update(patientId, patientData);
         document.getElementById('editPatientModal').classList.add('hidden');
         showNotification('success', 'Patient modifié avec succès!');
+        selectedPatient = updatedPatient;
         await loadPatients();
     } catch (error) {
         showNotification('error', 'Erreur lors de la modification du patient');
@@ -724,11 +793,11 @@ async function addSessionToPatient() {
         return;
     }
 
-    const newSessionCount = (selectedPatient.seancesEffectuees || 0) + additionalSessions;
+    const newTotalSessions = (selectedPatient.seancesPrevues || 0) + additionalSessions;
 
     const patientData = {
         ...selectedPatient,
-        seancesEffectuees: newSessionCount
+        seancesPrevues: newTotalSessions
     };
 
     try {
@@ -736,9 +805,8 @@ async function addSessionToPatient() {
         selectedPatient = updatedPatient;
 
         document.getElementById('addSessionsModal').classList.add('hidden');
-        showNotification('success', `${additionalSessions} séance(s) ajoutée(s) avec succès.`);
+        showNotification('success', `${additionalSessions} séance(s) ajoutée(s) au total avec succès.`);
 
-        // Recharger et réafficher le dossier patient
         await loadPatients();
         openPatientRecords(updatedPatient);
     } catch (error) {
@@ -763,13 +831,13 @@ function showNotification(type, message) {
         case 'error':
             notification.style.borderLeftColor = '#ef4444';
             notification.querySelector('.notification-icon').style.color = '#ef4444';
-            notificationIcon.innerHTML = '<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />';
+            notificationIcon.innerHTML = '<path fill-rule="evenodd" d="M10 20a10 10 0 100-20 10 10 0 000 20zM8.45 4.3c.765-1.36 2.722-1.36 3.486 0l5.14 9.14c.75 1.334-.213 2.98-1.742 2.98H5.07c-1.53 0-2.493-1.646-1.743-2.98l5.14-9.14zM11 12a1 1 0 11-2 0 1 1 0 012 0zm-1-7a1 1 0 00-1 1v2.8a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>';
             notificationTitle.textContent = 'Erreur';
             break;
         case 'info':
             notification.style.borderLeftColor = '#3b82f6';
             notification.querySelector('.notification-icon').style.color = '#3b82f6';
-            notificationIcon.innerHTML = '<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />';
+            notificationIcon.innerHTML = '<svg viewBox="0 0 20 20"><path fill="#FFCC00" d="M10 2L2 18h16L10 2z"/><path fill="#000" d="M10 15a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM10 6a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-3 0v-3A1.5 1.5 0 0110 6z"/></svg>';
             notificationTitle.textContent = 'Information';
             break;
     }
@@ -786,27 +854,47 @@ function resetForm(formId) {
     const form = document.getElementById(formId);
     form.reset();
 
-    // Réinitialiser les radios
     form.querySelectorAll('.custom-radio').forEach(radio => {
         radio.classList.remove('checked');
         radio.style.borderColor = '#d1d5db';
     });
 
-    // Réinitialiser les bordures d'erreur
     form.querySelectorAll('.border-red-500').forEach(el => {
         el.classList.remove('border-red-500');
     });
 }
 
+// Fonction pour initialiser le switch d'édition
+function initializeEditSwitch() {
+    const editActiveSwitch = document.getElementById('editActiveStatus');
+
+    if (editActiveSwitch) {
+        // Supprimer tout ancien event listener en clonant l'élément
+        const newSwitch = editActiveSwitch.cloneNode(true);
+        editActiveSwitch.parentNode.replaceChild(newSwitch, editActiveSwitch);
+
+        // Ajouter le nouvel event listener
+        newSwitch.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log('Switch cliqué!');
+
+            // Basculer la classe checked
+            this.classList.toggle('checked');
+
+            console.log('État du switch:', this.classList.contains('checked'));
+        });
+    }
+}
+
 // Initialisation
 document.addEventListener('DOMContentLoaded', async function () {
-    // Charger la sidebar
     try {
         const response = await fetch('partials/sidebar.html');
         const sidebarHTML = await response.text();
         document.getElementById('sidebar-container').innerHTML = sidebarHTML;
 
-        // Marquer la page active
         document.querySelectorAll('.nav-link').forEach(link => {
             if (link.dataset.tab === 'patients') {
                 link.classList.add('active');
@@ -816,7 +904,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.error("Erreur lors du chargement de la sidebar :", error);
     }
 
-    // Afficher la date actuelle
     const currentDate = document.getElementById('currentDate');
     const today = new Date();
     currentDate.textContent = today.toLocaleDateString('fr-FR', {
@@ -826,7 +913,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         year: 'numeric'
     });
 
-    // Sidebar toggle
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('mainContent');
     const openSidebarBtn = document.getElementById('openSidebarBtn');
@@ -851,13 +937,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     openSidebarBtn.addEventListener('click', toggleSidebar);
     closeSidebarBtn.addEventListener('click', toggleSidebar);
 
-    // Initialisation sidebar ouverte
     sidebar.classList.remove('sidebar-hidden');
     mainContent.classList.add('ml-64');
     openSidebarBtn.classList.add('hidden');
     closeSidebarBtn.classList.remove('hidden');
 
-    // Documents dropdown
     const documentsDropdown = document.getElementById('documentsDropdown');
     const documentsSubmenu = document.getElementById('documentsSubmenu');
     const dropdownArrow = document.getElementById('dropdownArrow');
@@ -875,7 +959,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    // Filtres
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', function () {
             document.querySelectorAll('.tab-button').forEach(btn => {
@@ -891,7 +974,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     });
 
-    // Recherche avec debounce
     let searchTimeout;
     document.getElementById('searchInput').addEventListener('input', function () {
         clearTimeout(searchTimeout);
@@ -901,7 +983,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         }, 300);
     });
 
-    // Dropdown de tri
     const sortDropdownBtn = document.getElementById('sortDropdownBtn');
     const sortDropdown = document.getElementById('sortDropdown');
 
@@ -927,7 +1008,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
 
-    // Switcher vues
     const listViewBtn = document.getElementById('listViewBtn');
     const gridViewBtn = document.getElementById('gridViewBtn');
     const tableView = document.getElementById('tableView');
@@ -935,30 +1015,37 @@ document.addEventListener('DOMContentLoaded', async function () {
     const gridPagination = document.getElementById('gridPagination');
 
     listViewBtn.addEventListener('click', function () {
-        listViewBtn.classList.add('bg-gray-100');
-        gridViewBtn.classList.remove('bg-gray-100');
+        // Activer le bouton liste et désactiver le bouton grille
+        listViewBtn.classList.add('bg-gray-100', 'text-gray-700');
+        listViewBtn.classList.remove('bg-white');
+        gridViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
+        gridViewBtn.classList.add('bg-white');
+
+        // Afficher la vue liste
         tableView.classList.remove('hidden');
         gridView.classList.add('hidden');
         gridPagination.classList.add('hidden');
     });
 
     gridViewBtn.addEventListener('click', function () {
-        gridViewBtn.classList.add('bg-gray-100');
-        listViewBtn.classList.remove('bg-gray-100');
+        // Activer le bouton grille et désactiver le bouton liste
+        gridViewBtn.classList.add('bg-gray-100', 'text-gray-700');
+        gridViewBtn.classList.remove('bg-white');
+        listViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
+        listViewBtn.classList.add('bg-white');
+
+        // Afficher la vue grille
         tableView.classList.add('hidden');
         gridView.classList.remove('hidden');
         gridPagination.classList.remove('hidden');
     });
 
-    // Event listeners des modals
     setupModalEventListeners();
-
-    // Chargement initial des patients
     loadPatients();
 });
 
 function setupModalEventListeners() {
-    // Modal Nouveau patient
+    // Nouveau patient modal
     document.getElementById('newPatientBtn').addEventListener('click', function() {
         document.getElementById('newPatientModal').classList.remove('hidden');
         resetForm('newPatientForm');
@@ -974,7 +1061,7 @@ function setupModalEventListeners() {
 
     document.getElementById('saveNewPatientBtn').addEventListener('click', saveNewPatient);
 
-    // Modal édition
+    // Edit patient modal
     document.getElementById('closeEditPatientBtn').addEventListener('click', function() {
         document.getElementById('editPatientModal').classList.add('hidden');
     });
@@ -983,21 +1070,27 @@ function setupModalEventListeners() {
         document.getElementById('editPatientModal').classList.add('hidden');
     });
 
+    // Gestion du switch d'état actif/inactif - VERSION SIMPLE
+    document.getElementById('editActiveStatus').addEventListener('click', function() {
+        this.classList.toggle('checked');
+        console.log('Switch state:', this.classList.contains('checked'));
+    });
+
     document.getElementById('saveEditPatientBtn').addEventListener('click', saveEditedPatient);
 
-    // Modal suppression
+    // Delete confirmation modal
     document.getElementById('cancelDeleteBtn').addEventListener('click', function() {
         document.getElementById('deleteConfirmModal').classList.add('hidden');
     });
 
     document.getElementById('confirmDeleteBtn').addEventListener('click', deletePatient);
 
-    // Modal dossier patient
+    // Patient records modal
     document.getElementById('closeRecordsModalBtn').addEventListener('click', function() {
         document.getElementById('patientRecordsModal').classList.add('hidden');
     });
 
-    // Onglets dossier patient
+    // Records tabs
     document.querySelectorAll('.records-tab-button').forEach(button => {
         button.addEventListener('click', function() {
             const tabName = this.dataset.tab;
@@ -1018,7 +1111,7 @@ function setupModalEventListeners() {
         });
     });
 
-    // Modal ajout séances
+    // Add sessions modal
     document.getElementById('addSessionBtn').addEventListener('click', function() {
         openAddSessionsModal(selectedPatient);
     });
@@ -1033,14 +1126,14 @@ function setupModalEventListeners() {
 
     document.getElementById('submitAddSessionsBtn').addEventListener('click', addSessionToPatient);
 
-    // Mise à jour automatique du total lors de la saisie
+    // Additional sessions input
     document.getElementById('additionalSessions').addEventListener('input', function() {
         const current = parseInt(document.getElementById('currentSessionsDisplay').value) || 0;
         const additional = parseInt(this.value) || 0;
         document.getElementById('totalSessionsDisplay').value = current + additional;
     });
 
-    // Gestion des radios personnalisés
+    // Custom radio buttons
     document.querySelectorAll('.custom-radio').forEach(radio => {
         radio.addEventListener('click', function() {
             const form = this.closest('form');
@@ -1051,11 +1144,12 @@ function setupModalEventListeners() {
         });
     });
 
-    // Nouveaux boutons pour créer des documents
+    // New anamnese button
     document.getElementById('newAnamneseForPatientBtn')?.addEventListener('click', function() {
         showNotification('info', 'Redirection vers le formulaire d\'anamnèse');
     });
 
+    // New compte rendu button
     document.getElementById('newCompteRenduForPatientBtn')?.addEventListener('click', function() {
         showNotification('info', 'Redirection vers le formulaire de compte rendu');
     });
