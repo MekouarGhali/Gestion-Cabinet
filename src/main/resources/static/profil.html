@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
   <title>Profil Utilisateur</title>
   <script src="https://cdn.tailwindcss.com/3.4.16"></script>
   <script>tailwind.config={theme:{extend:{colors:{primary:'#5b67e0',secondary:'#e0e7ff'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
@@ -13,6 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="css/profil.css">
+  <script src="js/theme.js"></script>
 </head>
 <body class="bg-gray-50">
 <div class="flex h-screen overflow-hidden">
@@ -223,7 +225,7 @@
               <label class="block text-sm text-gray-600 mb-2">Télécharger une image</label>
               <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center" id="dropArea">
                 <div class="w-10 h-10 mx-auto mb-2 rounded-full bg-primary bg-opacity-10 flex items-center justify-center">
-                  <i class="ri-upload-2-line text-primary"></i>
+                  <i class="ri-upload-2-line" style="color: #ffffff !important;"></i>
                 </div>
                 <p class="text-xs text-gray-600 mb-2">Glissez-déposez ou</p>
                 <label for="photoUpload" class="px-3 py-1.5 bg-primary text-white text-sm rounded-button hover:bg-primary/90 cursor-pointer whitespace-nowrap inline-block">

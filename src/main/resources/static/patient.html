@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
     <title>Gestion des Patients</title>
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
     <script>tailwind.config={theme:{extend:{colors:{primary:'#5b67e0',secondary:'#e0e7ff'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
@@ -13,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="css/patient.css">
+    <script src="js/theme.js"></script>
 </head>
 <body>
 <div class="flex h-screen overflow-hidden">
@@ -492,6 +494,7 @@
     </div>
     <div class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</div>
 </div>
+
 <script src="js/sidebar.js"></script>
 <script src="js/patient.js"></script>
 </body>

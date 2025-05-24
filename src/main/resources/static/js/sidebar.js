@@ -1,11 +1,13 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Load sidebar content
+    console.log('🚀 Initialisation du sidebar...');
+
+    // Charger le contenu de la sidebar
     loadSidebar();
 
-    // Load doctor info
+    // Charger les informations du docteur
     loadDoctorInfo();
 
-    // Set current date
+    // Définir la date actuelle
     updateCurrentDate();
 });
 
@@ -16,15 +18,18 @@ async function loadSidebar() {
 
         const html = await response.text();
         const sidebarContainer = document.getElementById('sidebar-container') || document.getElementById('sidebar');
+
         if (sidebarContainer) {
             sidebarContainer.innerHTML = html;
+            console.log('✅ Sidebar HTML injectée');
         }
 
-        // Activate current tab
+        // Activer l'onglet current et configurer les event listeners
         activateCurrentTab();
         setupSidebarEventListeners();
+
     } catch (error) {
-        console.error('Error loading sidebar:', error);
+        console.error('❌ Erreur lors du chargement de la sidebar:', error);
         renderDefaultSidebar();
     }
 }
@@ -35,26 +40,49 @@ function renderDefaultSidebar() {
 
     sidebarContainer.innerHTML = `
         <aside class="w-64 bg-white border-r border-gray-200 flex flex-col sidebar-fixed">
-            <div class="p-5 border-b border-gray-200">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center">
                 <h1 class="text-2xl font-['Pacifico'] text-primary">Cabinet Médical</h1>
+                <button id="closeSidebarBtn" class="burger-btn text-gray-600">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
             </div>
             <nav class="flex-1 overflow-y-auto py-4">
                 <ul>
                     <li class="mb-1">
+                        <a href="/menu" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                            <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                                <i class="ri-dashboard-line"></i>
+                            </div>
+                            <span>Tableau de Bord</span>
+                        </a>
+                    </li>
+                    <li class="mb-1">
                         <a href="/patients/page" class="flex items-center px-4 py-3 text-primary bg-blue-50 border-l-4 border-primary">
-                            <i class="ri-user-line mr-3"></i>
+                            <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                                <i class="ri-user-line"></i>
+                            </div>
                             <span>Patients</span>
                         </a>
                     </li>
                     <li class="mb-1">
+                        <a href="/rendezvous/page" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                            <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                                <i class="ri-calendar-2-line"></i>
+                            </div>
+                            <span>Rendez-Vous</span>
+                        </a>
+                    </li>
+                    <li class="mb-1">
                         <a href="/profil" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
-                            <i class="ri-settings-line mr-3"></i>
+                            <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
+                                <i class="ri-settings-line"></i>
+                            </div>
                             <span>Profil</span>
                         </a>
                     </li>
                 </ul>
             </nav>
-            <div class="p-4 border-t border-gray-200">
+            <div id="userInfo" class="p-4 border-t border-gray-200 hover:bg-gray-50 cursor-pointer">
                 <div class="flex items-center">
                     <div id="userAvatar" class="w-10 h-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 mr-3">
                         <span class="font-medium">MZ</span>
@@ -67,19 +95,21 @@ function renderDefaultSidebar() {
             </div>
         </aside>
     `;
+
+    console.log('✅ Sidebar par défaut rendue');
 }
 
 async function loadDoctorInfo() {
     try {
-        // ✅ CORRIGÉ : Utiliser la nouvelle API profil
         const response = await fetch('/api/profil/me');
         if (!response.ok) throw new Error('Profil info not found');
 
         const profil = await response.json();
         renderDoctorInfo(profil);
+
     } catch (error) {
-        console.error('Error loading doctor info:', error);
-        // Use default info if API fails
+        console.error('⚠️ Erreur lors du chargement du profil:', error);
+        // Utiliser les informations par défaut en cas d'échec
         renderDoctorInfo({
             initiales: 'MZ',
             prenom: 'Mekouar',
@@ -90,7 +120,7 @@ async function loadDoctorInfo() {
 }
 
 function renderDoctorInfo(profil) {
-    console.log('🔄 Mise à jour sidebar avec profil:', profil); // Debug
+    console.log('🔄 Mise à jour sidebar avec profil:', profil);
 
     // Attendre que la sidebar soit chargée
     setTimeout(() => {
@@ -98,38 +128,38 @@ function renderDoctorInfo(profil) {
         const userName = document.getElementById('userName');
         const userProfession = document.getElementById('userProfession');
 
-        console.log('📍 Éléments sidebar trouvés:', { userAvatar, userName, userProfession }); // Debug
-
         if (userAvatar) {
-            // ✅ CORRECTION : Charger l'image via l'endpoint si elle existe
+            // Charger l'image avatar si elle existe
             if (profil.id && profil.avatar) {
                 loadSidebarAvatar(profil.id, userAvatar);
             } else {
-                userAvatar.innerHTML = `<span class="font-medium">${profil.initiales || 'MZ'}</span>`;
+                const initiales = profil.initiales || 'MZ';
+                userAvatar.innerHTML = `<span class="font-medium">${initiales}</span>`;
             }
         }
 
         if (userName) {
             const fullName = `${profil.prenom || 'Mekouar'} ${profil.nom || 'Zineb'}`.trim();
             userName.textContent = fullName;
-            console.log('✅ Nom mis à jour:', fullName); // Debug
+            console.log('✅ Nom mis à jour:', fullName);
         }
 
         if (userProfession) {
-            userProfession.textContent = profil.specialite || 'psychomotricienne';
-            console.log('✅ Spécialité mise à jour:', profil.specialite); // Debug
+            const specialite = profil.specialite || 'psychomotricienne';
+            userProfession.textContent = specialite;
+            console.log('✅ Spécialité mise à jour:', specialite);
         }
+
+        // Configurer le clic sur les informations utilisateur
+        setupUserInfoClickHandler();
+
     }, 100);
 }
 
-// ✅ NOUVELLE FONCTION : Charger l'avatar pour la sidebar
 async function loadSidebarAvatar(profilId, avatarElement) {
     try {
         const timestamp = new Date().getTime();
         const url = `/api/profil/photo/${profilId}?t=${timestamp}`;
-
-        console.log('🔍 loadSidebarAvatar - URL:', url);
-        console.log('🔍 loadSidebarAvatar - profilId:', profilId);
 
         const response = await fetch(url, {
             cache: 'no-cache',
@@ -139,31 +169,17 @@ async function loadSidebarAvatar(profilId, avatarElement) {
             }
         });
 
-        console.log('🔍 loadSidebarAvatar - Response status:', response.status);
-        console.log('🔍 loadSidebarAvatar - Response headers:', [...response.headers.entries()]);
-
         if (response.ok) {
             const blob = await response.blob();
             const imageUrl = URL.createObjectURL(blob);
 
-            console.log('🔍 loadSidebarAvatar - Blob size:', blob.size);
-            console.log('🔍 loadSidebarAvatar - Blob type:', blob.type);
-            console.log('🔍 loadSidebarAvatar - Generated URL:', imageUrl);
-
-            // ✅ VÉRIFIER : Hash de l'image sidebar
-            const arrayBuffer = await blob.arrayBuffer();
-            const hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            console.log('🔍 loadSidebarAvatar - Image hash:', hashHex);
-
             avatarElement.innerHTML = `<img src="${imageUrl}" alt="Avatar" class="w-full h-full object-cover rounded-full">`;
-            console.log('🔍 loadSidebarAvatar - Avatar updated');
+            console.log('✅ Avatar chargé depuis l\'API');
         } else {
-            console.log('🔍 loadSidebarAvatar - Pas d\'avatar trouvé');
+            console.log('ℹ️ Aucun avatar trouvé dans l\'API');
         }
     } catch (error) {
-        console.log('🔍 loadSidebarAvatar - Erreur:', error);
+        console.log('⚠️ Erreur lors du chargement de l\'avatar:', error);
     }
 }
 
@@ -181,78 +197,111 @@ function activateCurrentTab() {
 
             // Vérifier si c'est le lien actuel
             const linkPath = link.getAttribute('href');
-            if (currentPath.includes(linkPath) ||
+            const isCurrentPage = currentPath.includes(linkPath) ||
                 (linkPath === '/patients/page' && currentPath.includes('/patient')) ||
-                (linkPath === '/profil' && currentPath.includes('/profil'))) {
+                (linkPath === '/profil' && currentPath.includes('/profil')) ||
+                (linkPath === '/menu' && (currentPath === '/' || currentPath.includes('/menu')));
 
+            if (isCurrentPage) {
                 link.classList.remove('text-gray-600', 'hover:bg-gray-50');
                 link.classList.add('text-primary', 'bg-blue-50', 'border-l-4', 'border-primary');
             }
         });
+
+        console.log('✅ Onglet actif configuré pour:', currentPath);
     }, 100);
 }
 
 function setupSidebarEventListeners() {
-    // Toggle sidebar on mobile
-    const openSidebarBtn = document.getElementById('openSidebarBtn');
-    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+    // Attendre que les éléments soient disponibles
+    setTimeout(() => {
+        // Toggle sidebar pour mobile
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 
-    if (openSidebarBtn) openSidebarBtn.addEventListener('click', toggleSidebar);
-    if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
+        if (openSidebarBtn) {
+            openSidebarBtn.addEventListener('click', toggleSidebar);
+            console.log('✅ Event listener openSidebarBtn configuré');
+        }
 
-    // Handle documents dropdown
-    const documentsDropdown = document.getElementById('documentsDropdown');
-    if (documentsDropdown) {
-        documentsDropdown.addEventListener('click', function(e) {
-            e.preventDefault();
-            const submenu = document.getElementById('documentsSubmenu');
-            const icon = document.getElementById('dropdownArrow');
+        if (closeSidebarBtn) {
+            closeSidebarBtn.addEventListener('click', toggleSidebar);
+            console.log('✅ Event listener closeSidebarBtn configuré');
+        }
 
-            if (submenu) {
-                submenu.classList.toggle('show');
-            }
+        // Gérer le dropdown documents
+        const documentsDropdown = document.getElementById('documentsDropdown');
+        if (documentsDropdown) {
+            documentsDropdown.addEventListener('click', function(e) {
+                e.preventDefault();
+                const submenu = document.getElementById('documentsSubmenu');
+                const icon = document.getElementById('dropdownArrow');
 
-            if (icon) {
-                icon.classList.toggle('ri-arrow-down-s-line');
-                icon.classList.toggle('ri-arrow-up-s-line');
-            }
-        });
-    }
+                if (submenu) {
+                    submenu.classList.toggle('show');
+                }
+
+                if (icon) {
+                    icon.classList.toggle('ri-arrow-down-s-line');
+                    icon.classList.toggle('ri-arrow-up-s-line');
+                }
+            });
+            console.log('✅ Dropdown documents configuré');
+        }
+    }, 150);
 }
 
 function toggleSidebar() {
-    console.log('🔄 toggleSidebar appelé !');
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const openSidebarBtn = document.getElementById('openSidebarBtn');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    if (!sidebar || !mainContent) {
+        console.log('⚠️ Éléments sidebar ou mainContent non trouvés');
+        return;
+    }
+
     const isOpen = !sidebar.classList.contains('sidebar-hidden');
-    console.log('📍 Sidebar ouverte:', isOpen);
+    console.log('🔄 Toggle sidebar - État actuel:', isOpen ? 'ouvert' : 'fermé');
 
     if (isOpen) {
-        console.log('🔒 Fermeture...');
+        // Fermer la sidebar
         sidebar.classList.add('sidebar-hidden');
         mainContent.classList.remove('ml-64');
 
-        // ✅ FORCE l'affichage du bouton d'ouverture
-        openSidebarBtn.classList.remove('hidden');
-        openSidebarBtn.style.display = 'flex';
+        if (openSidebarBtn) {
+            openSidebarBtn.classList.remove('hidden');
+            openSidebarBtn.style.display = 'flex';
+        }
 
-        closeSidebarBtn.classList.add('hidden');
-        console.log('✅ Bouton ouverture forcé visible');
+        if (closeSidebarBtn) {
+            closeSidebarBtn.classList.add('hidden');
+        }
+
+        console.log('🔒 Sidebar fermée');
     } else {
-        console.log('🔓 Ouverture...');
+        // Ouvrir la sidebar
         sidebar.classList.remove('sidebar-hidden');
         mainContent.classList.add('ml-64');
 
-        // ✅ FORCE le masquage du bouton d'ouverture
-        openSidebarBtn.classList.add('hidden');
-        openSidebarBtn.style.display = 'none';
+        if (openSidebarBtn) {
+            openSidebarBtn.classList.add('hidden');
+            openSidebarBtn.style.display = 'none';
+        }
 
-        closeSidebarBtn.classList.remove('hidden');
-        console.log('✅ Bouton ouverture forcé caché');
+        if (closeSidebarBtn) {
+            closeSidebarBtn.classList.remove('hidden');
+        }
+
+        console.log('🔓 Sidebar ouverte');
     }
 }
 
 function updateCurrentDate() {
     const today = new Date();
     const dateElement = document.getElementById('currentDate');
+
     if (dateElement) {
         dateElement.textContent = today.toLocaleDateString('fr-FR', {
             weekday: 'long',
@@ -260,16 +309,36 @@ function updateCurrentDate() {
             month: 'long',
             year: 'numeric'
         });
+        console.log('✅ Date actuelle mise à jour');
     }
 }
 
-// ✅ CORRIGÉ : Fonction globale pour mettre à jour depuis d'autres pages
+function setupUserInfoClickHandler() {
+    const userInfo = document.getElementById('userInfo');
+
+    if (userInfo) {
+        // Supprimer l'ancien event listener s'il existe
+        userInfo.onclick = null;
+
+        // Ajouter le nouvel event listener
+        userInfo.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('👤 Clic sur User Info - Redirection vers profil');
+
+            // Redirection vers la page profil
+            window.location.href = '/profil.html';
+        });
+
+        console.log('✅ Event listener User Info configuré');
+    }
+}
+
+// Fonctions globales pour mise à jour depuis d'autres pages
 window.updateSidebarUserInfo = function(profilData) {
     console.log('🔄 Mise à jour sidebar via fonction globale:', profilData);
     renderDoctorInfo(profilData);
 };
 
-// ✅ NOUVEAU : Fonction pour forcer le rechargement
 window.forceReloadSidebar = function() {
     console.log('🔄 Rechargement forcé de la sidebar');
     loadDoctorInfo();

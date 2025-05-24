@@ -229,6 +229,15 @@ body {
     margin-right: 0.5rem;
 }
 
+/* Fix simple pour le dropdown de tri */
+#sortDropdown .dropdown-item {
+    color: #4b5563 !important;
+}
+
+.theme-dark #sortDropdown .dropdown-item {
+    color: #f9fafb !important;
+}
+
 /* Grid View Card Styles */
 .grid-view-card {
     transition: all 0.2s ease-in-out;

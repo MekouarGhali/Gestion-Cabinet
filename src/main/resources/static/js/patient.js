@@ -112,7 +112,6 @@ function calculateAge(birthDate) {
     const today = new Date();
     const birth = new Date(birthDate);
 
-    // Si la date est dans le futur, retourner N/A (sera géré dans la validation)
     if (birth > today) {
         return 'N/A';
     }
@@ -121,20 +120,17 @@ function calculateAge(birthDate) {
     let months = today.getMonth() - birth.getMonth();
     let days = today.getDate() - birth.getDate();
 
-    // Ajuster si les jours sont négatifs
     if (days < 0) {
         months--;
         const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
         days += lastMonth.getDate();
     }
 
-    // Ajuster si les mois sont négatifs
     if (months < 0) {
         years--;
         months += 12;
     }
 
-    // Si moins d'un an, afficher en mois
     if (years === 0) {
         if (months === 0) {
             return days <= 1 ? '1 jour' : `${days} jours`;
@@ -142,7 +138,6 @@ function calculateAge(birthDate) {
         return months === 1 ? '1 mois' : `${months} mois`;
     }
 
-    // Si un an ou plus, afficher en années
     return years === 1 ? '1 an' : `${years} ans`;
 }
 
@@ -182,6 +177,7 @@ function getStatusLabel(status) {
         default: return 'Nouveau';
     }
 }
+
 // Gestion des patients
 async function loadPatients() {
     try {
@@ -229,7 +225,6 @@ function sortPatients() {
             case 'age':
                 const ageA = calculateAge(a.dateNaissance);
                 const ageB = calculateAge(b.dateNaissance);
-                // Extraire les nombres pour la comparaison
                 const numA = parseInt(ageA) || 0;
                 const numB = parseInt(ageB) || 0;
                 return numA - numB;
@@ -582,7 +577,6 @@ function openPatientRecords(patient) {
 }
 
 function openEditPatientModal(patient) {
-    // Pré-remplir les champs
     document.getElementById('editPatientId').value = patient.id;
     document.getElementById('editFirstName').value = patient.prenom || '';
     document.getElementById('editLastName').value = patient.nom || '';
@@ -603,17 +597,14 @@ function openEditPatientModal(patient) {
         document.getElementById('editGenderFemale').classList.add('checked');
     }
 
-    // Switch - CONSERVER l'état du patient
+    // Switch
     const activeSwitch = document.getElementById('editActiveStatus');
-
-    // NE PAS réinitialiser ! Juste définir selon le statut actuel
     if (patient.statut === 'inactif') {
         activeSwitch.classList.add('checked');
     } else {
         activeSwitch.classList.remove('checked');
     }
 
-    // Afficher le modal
     document.getElementById('editPatientModal').classList.remove('hidden');
 }
 
@@ -654,7 +645,7 @@ function validatePatientForm(isEdit = false) {
         }
     });
 
-    // Validation spéciale pour la date de naissance
+    // Validation date de naissance
     const birthDateInput = document.getElementById(birthDateId);
     if (birthDateInput.value) {
         const today = new Date();
@@ -684,7 +675,6 @@ function validatePatientForm(isEdit = false) {
         });
     }
 
-    // Afficher le bon message d'erreur selon le problème
     if (!valid) {
         if (hasEmptyFields) {
             showNotification('error', 'Veuillez remplir tous les champs obligatoires.');
@@ -697,9 +687,7 @@ function validatePatientForm(isEdit = false) {
 }
 
 async function saveNewPatient() {
-    if (!validatePatientForm()) {
-        return; // Le message d'erreur est déjà affiché dans validatePatientForm
-    }
+    if (!validatePatientForm()) return;
 
     const genderSelected = document.querySelector('#newPatientModal .custom-radio.checked');
 
@@ -724,29 +712,21 @@ async function saveNewPatient() {
 }
 
 async function saveEditedPatient() {
-    if (!validatePatientForm(true)) {
-        return; // Le message d'erreur est déjà affiché dans validatePatientForm
-    }
+    if (!validatePatientForm(true)) return;
 
     const patientId = document.getElementById('editPatientId').value;
     const genderSelected = document.querySelector('#editPatientModal .custom-radio.checked');
 
-    // Récupération de l'état du switch
     const activeSwitch = document.getElementById('editActiveStatus');
     const isSwitchChecked = activeSwitch.classList.contains('checked');
     const sessionsDone = parseInt(document.getElementById('editSessionCount').value) || 0;
 
-    console.log('Switch activé:', isSwitchChecked); // Pour debug
-
-    // Le switch a la priorité
     let newStatus;
     if (isSwitchChecked) {
         newStatus = 'inactif';
     } else {
         newStatus = sessionsDone > 0 ? 'actif' : 'nouveau';
     }
-
-    console.log('Nouveau statut:', newStatus); // Pour debug
 
     const patientData = {
         prenom: document.getElementById('editFirstName').value.trim(),
@@ -864,103 +844,108 @@ function resetForm(formId) {
     });
 }
 
-// Fonction pour initialiser le switch d'édition
-function initializeEditSwitch() {
-    const editActiveSwitch = document.getElementById('editActiveStatus');
-
-    if (editActiveSwitch) {
-        // Supprimer tout ancien event listener en clonant l'élément
-        const newSwitch = editActiveSwitch.cloneNode(true);
-        editActiveSwitch.parentNode.replaceChild(newSwitch, editActiveSwitch);
-
-        // Ajouter le nouvel event listener
-        newSwitch.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            console.log('Switch cliqué!');
-
-            // Basculer la classe checked
-            this.classList.toggle('checked');
-
-            console.log('État du switch:', this.classList.contains('checked'));
-        });
-    }
-}
-
-// Initialisation
-document.addEventListener('DOMContentLoaded', async function () {
-    try {
-        const response = await fetch('partials/sidebar.html');
-        const sidebarHTML = await response.text();
-        document.getElementById('sidebar-container').innerHTML = sidebarHTML;
-
-        document.querySelectorAll('.nav-link').forEach(link => {
-            if (link.dataset.tab === 'patients') {
-                link.classList.add('active');
-            }
-        });
-    } catch (error) {
-        console.error("Erreur lors du chargement de la sidebar :", error);
-    }
-
-    const currentDate = document.getElementById('currentDate');
-    const today = new Date();
-    currentDate.textContent = today.toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-    });
-
+// Fonction simplifiée pour le toggle sidebar
+function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('mainContent');
     const openSidebarBtn = document.getElementById('openSidebarBtn');
     const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 
-    function toggleSidebar() {
-        const isOpen = !sidebar.classList.contains('sidebar-hidden');
+    if (!sidebar || !mainContent || !openSidebarBtn || !closeSidebarBtn) return;
 
-        if (isOpen) {
-            sidebar.classList.add('sidebar-hidden');
-            mainContent.classList.remove('ml-64');
-            openSidebarBtn.classList.remove('hidden');
-            closeSidebarBtn.classList.add('hidden');
-        } else {
+    const isOpen = !sidebar.classList.contains('sidebar-hidden');
+
+    if (isOpen) {
+        // Fermer
+        sidebar.classList.add('sidebar-hidden');
+        mainContent.classList.remove('ml-64');
+        openSidebarBtn.classList.remove('hidden');
+        openSidebarBtn.style.display = 'flex';
+        closeSidebarBtn.classList.add('hidden');
+    } else {
+        // Ouvrir
+        sidebar.classList.remove('sidebar-hidden');
+        mainContent.classList.add('ml-64');
+        openSidebarBtn.classList.add('hidden');
+        openSidebarBtn.style.display = 'none';
+        closeSidebarBtn.classList.remove('hidden');
+    }
+}
+
+// Initialisation principale
+document.addEventListener('DOMContentLoaded', async function () {
+    console.log('🚀 Initialisation de la page patients...');
+
+    // 1. Charger la sidebar
+    try {
+        const response = await fetch('partials/sidebar.html');
+        const sidebarHTML = await response.text();
+        document.getElementById('sidebar-container').innerHTML = sidebarHTML;
+        console.log('✅ Sidebar chargée');
+    } catch (error) {
+        console.error("❌ Erreur lors du chargement de la sidebar :", error);
+    }
+
+    // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
+    setTimeout(() => {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+        if (sidebar && mainContent && openSidebarBtn && closeSidebarBtn) {
+            // Event listeners pour le toggle
+            openSidebarBtn.addEventListener('click', toggleSidebar);
+            closeSidebarBtn.addEventListener('click', toggleSidebar);
+
+            // État initial : sidebar ouverte
             sidebar.classList.remove('sidebar-hidden');
             mainContent.classList.add('ml-64');
             openSidebarBtn.classList.add('hidden');
+            openSidebarBtn.style.display = 'none';
             closeSidebarBtn.classList.remove('hidden');
+
+            console.log('✅ Toggle sidebar configuré');
         }
+
+        // Configurer le dropdown documents
+        const documentsDropdown = document.getElementById('documentsDropdown');
+        const documentsSubmenu = document.getElementById('documentsSubmenu');
+        const dropdownArrow = document.getElementById('dropdownArrow');
+
+        if (documentsDropdown && documentsSubmenu && dropdownArrow) {
+            documentsDropdown.addEventListener('click', function (e) {
+                e.preventDefault();
+                documentsSubmenu.classList.toggle('show');
+
+                if (documentsSubmenu.classList.contains('show')) {
+                    dropdownArrow.classList.remove('ri-arrow-down-s-line');
+                    dropdownArrow.classList.add('ri-arrow-up-s-line');
+                } else {
+                    dropdownArrow.classList.remove('ri-arrow-up-s-line');
+                    dropdownArrow.classList.add('ri-arrow-down-s-line');
+                }
+            });
+            console.log('✅ Dropdown documents configuré');
+        }
+    }, 200);
+
+    // 3. Configurer la date actuelle
+    const currentDate = document.getElementById('currentDate');
+    if (currentDate) {
+        const today = new Date();
+        currentDate.textContent = today.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
     }
 
-    openSidebarBtn.addEventListener('click', toggleSidebar);
-    closeSidebarBtn.addEventListener('click', toggleSidebar);
-
-    sidebar.classList.remove('sidebar-hidden');
-    mainContent.classList.add('ml-64');
-    openSidebarBtn.classList.add('hidden');
-    closeSidebarBtn.classList.remove('hidden');
-
-    const documentsDropdown = document.getElementById('documentsDropdown');
-    const documentsSubmenu = document.getElementById('documentsSubmenu');
-    const dropdownArrow = document.getElementById('dropdownArrow');
-
-    documentsDropdown.addEventListener('click', function (e) {
-        e.preventDefault();
-        documentsSubmenu.classList.toggle('show');
-
-        if (documentsSubmenu.classList.contains('show')) {
-            dropdownArrow.classList.remove('ri-arrow-down-s-line');
-            dropdownArrow.classList.add('ri-arrow-up-s-line');
-        } else {
-            dropdownArrow.classList.remove('ri-arrow-up-s-line');
-            dropdownArrow.classList.add('ri-arrow-down-s-line');
-        }
-    });
-
+    // 4. Configurer les filtres patients
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', function () {
+            // Mettre à jour l'apparence des boutons
             document.querySelectorAll('.tab-button').forEach(btn => {
                 btn.classList.remove('active');
                 btn.classList.add('bg-gray-100', 'text-gray-700');
@@ -968,133 +953,188 @@ document.addEventListener('DOMContentLoaded', async function () {
             this.classList.add('active');
             this.classList.remove('bg-gray-100', 'text-gray-700');
 
+            // Appliquer le filtre
             currentFilter = this.dataset.filter;
             currentPage = 1;
             filterPatients();
         });
     });
 
+    // 5. Configurer la recherche
     let searchTimeout;
-    document.getElementById('searchInput').addEventListener('input', function () {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            currentPage = 1;
-            filterPatients();
-        }, 300);
-    });
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentPage = 1;
+                filterPatients();
+            }, 300);
+        });
+    }
 
+    // 6. Configurer le dropdown de tri
     const sortDropdownBtn = document.getElementById('sortDropdownBtn');
     const sortDropdown = document.getElementById('sortDropdown');
 
-    sortDropdownBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        sortDropdown.classList.toggle('show');
-    });
-
-    document.querySelectorAll('.dropdown-item').forEach(item => {
-        item.addEventListener('click', function (e) {
+    if (sortDropdownBtn && sortDropdown) {
+        sortDropdownBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            currentSort = this.dataset.sort;
-            sortDropdownBtn.querySelector('span').textContent = 'Trier par: ' + this.textContent.trim();
-            sortDropdown.classList.remove('show');
-            filterPatients();
+            e.stopPropagation();
+            sortDropdown.classList.toggle('show');
         });
-    });
 
-    document.addEventListener('click', function (e) {
-        if (!sortDropdownBtn.contains(e.target) && !sortDropdown.contains(e.target)) {
-            sortDropdown.classList.remove('show');
-        }
-    });
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', function (e) {
+                e.preventDefault();
+                currentSort = this.dataset.sort;
+                sortDropdownBtn.querySelector('span').textContent = 'Trier par: ' + this.textContent.trim();
+                sortDropdown.classList.remove('show');
+                filterPatients();
+            });
+        });
 
+        // Fermer le dropdown si on clique ailleurs
+        document.addEventListener('click', function (e) {
+            if (!sortDropdownBtn.contains(e.target) && !sortDropdown.contains(e.target)) {
+                sortDropdown.classList.remove('show');
+            }
+        });
+    }
+
+    // 7. Configurer les vues liste/grille
     const listViewBtn = document.getElementById('listViewBtn');
     const gridViewBtn = document.getElementById('gridViewBtn');
     const tableView = document.getElementById('tableView');
     const gridView = document.getElementById('gridView');
     const gridPagination = document.getElementById('gridPagination');
 
-    listViewBtn.addEventListener('click', function () {
-        // Activer le bouton liste et désactiver le bouton grille
-        listViewBtn.classList.add('bg-gray-100', 'text-gray-700');
-        listViewBtn.classList.remove('bg-white');
-        gridViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
-        gridViewBtn.classList.add('bg-white');
+    if (listViewBtn && gridViewBtn && tableView && gridView && gridPagination) {
+        listViewBtn.addEventListener('click', function () {
+            // Activer vue liste
+            listViewBtn.classList.add('bg-gray-100', 'text-gray-700');
+            listViewBtn.classList.remove('bg-white');
+            gridViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
+            gridViewBtn.classList.add('bg-white');
 
-        // Afficher la vue liste
-        tableView.classList.remove('hidden');
-        gridView.classList.add('hidden');
-        gridPagination.classList.add('hidden');
-    });
+            // Afficher/masquer les vues
+            tableView.classList.remove('hidden');
+            gridView.classList.add('hidden');
+            gridPagination.classList.add('hidden');
+        });
 
-    gridViewBtn.addEventListener('click', function () {
-        // Activer le bouton grille et désactiver le bouton liste
-        gridViewBtn.classList.add('bg-gray-100', 'text-gray-700');
-        gridViewBtn.classList.remove('bg-white');
-        listViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
-        listViewBtn.classList.add('bg-white');
+        gridViewBtn.addEventListener('click', function () {
+            // Activer vue grille
+            gridViewBtn.classList.add('bg-gray-100', 'text-gray-700');
+            gridViewBtn.classList.remove('bg-white');
+            listViewBtn.classList.remove('bg-gray-100', 'text-gray-700');
+            listViewBtn.classList.add('bg-white');
 
-        // Afficher la vue grille
-        tableView.classList.add('hidden');
-        gridView.classList.remove('hidden');
-        gridPagination.classList.remove('hidden');
-    });
+            // Afficher/masquer les vues
+            tableView.classList.add('hidden');
+            gridView.classList.remove('hidden');
+            gridPagination.classList.remove('hidden');
+        });
+    }
 
+    // 8. Initialiser les modals et charger les patients
     setupModalEventListeners();
-    loadPatients();
+    await loadPatients();
+
+    console.log('✅ Initialisation terminée');
 });
 
 function setupModalEventListeners() {
-    // Nouveau patient modal
-    document.getElementById('newPatientBtn').addEventListener('click', function() {
-        document.getElementById('newPatientModal').classList.remove('hidden');
-        resetForm('newPatientForm');
-    });
+    // Modal nouveau patient
+    const newPatientBtn = document.getElementById('newPatientBtn');
+    const newPatientModal = document.getElementById('newPatientModal');
+    const closeNewPatientBtn = document.getElementById('closeNewPatientBtn');
+    const cancelNewPatientBtn = document.getElementById('cancelNewPatientBtn');
+    const saveNewPatientBtn = document.getElementById('saveNewPatientBtn');
 
-    document.getElementById('closeNewPatientBtn').addEventListener('click', function() {
-        document.getElementById('newPatientModal').classList.add('hidden');
-    });
+    if (newPatientBtn && newPatientModal) {
+        newPatientBtn.addEventListener('click', function() {
+            newPatientModal.classList.remove('hidden');
+            resetForm('newPatientForm');
+        });
+    }
 
-    document.getElementById('cancelNewPatientBtn').addEventListener('click', function() {
-        document.getElementById('newPatientModal').classList.add('hidden');
-    });
+    if (closeNewPatientBtn) {
+        closeNewPatientBtn.addEventListener('click', function() {
+            newPatientModal.classList.add('hidden');
+        });
+    }
 
-    document.getElementById('saveNewPatientBtn').addEventListener('click', saveNewPatient);
+    if (cancelNewPatientBtn) {
+        cancelNewPatientBtn.addEventListener('click', function() {
+            newPatientModal.classList.add('hidden');
+        });
+    }
 
-    // Edit patient modal
-    document.getElementById('closeEditPatientBtn').addEventListener('click', function() {
-        document.getElementById('editPatientModal').classList.add('hidden');
-    });
+    if (saveNewPatientBtn) {
+        saveNewPatientBtn.addEventListener('click', saveNewPatient);
+    }
 
-    document.getElementById('cancelEditPatientBtn').addEventListener('click', function() {
-        document.getElementById('editPatientModal').classList.add('hidden');
-    });
+    // Modal édition patient
+    const editPatientModal = document.getElementById('editPatientModal');
+    const closeEditPatientBtn = document.getElementById('closeEditPatientBtn');
+    const cancelEditPatientBtn = document.getElementById('cancelEditPatientBtn');
+    const saveEditPatientBtn = document.getElementById('saveEditPatientBtn');
+    const editActiveStatus = document.getElementById('editActiveStatus');
 
-    // Gestion du switch d'état actif/inactif - VERSION SIMPLE
-    document.getElementById('editActiveStatus').addEventListener('click', function() {
-        this.classList.toggle('checked');
-        console.log('Switch state:', this.classList.contains('checked'));
-    });
+    if (closeEditPatientBtn && editPatientModal) {
+        closeEditPatientBtn.addEventListener('click', function() {
+            editPatientModal.classList.add('hidden');
+        });
+    }
 
-    document.getElementById('saveEditPatientBtn').addEventListener('click', saveEditedPatient);
+    if (cancelEditPatientBtn && editPatientModal) {
+        cancelEditPatientBtn.addEventListener('click', function() {
+            editPatientModal.classList.add('hidden');
+        });
+    }
 
-    // Delete confirmation modal
-    document.getElementById('cancelDeleteBtn').addEventListener('click', function() {
-        document.getElementById('deleteConfirmModal').classList.add('hidden');
-    });
+    if (editActiveStatus) {
+        editActiveStatus.addEventListener('click', function() {
+            this.classList.toggle('checked');
+        });
+    }
 
-    document.getElementById('confirmDeleteBtn').addEventListener('click', deletePatient);
+    if (saveEditPatientBtn) {
+        saveEditPatientBtn.addEventListener('click', saveEditedPatient);
+    }
 
-    // Patient records modal
-    document.getElementById('closeRecordsModalBtn').addEventListener('click', function() {
-        document.getElementById('patientRecordsModal').classList.add('hidden');
-    });
+    // Modal confirmation suppression
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-    // Records tabs
+    if (cancelDeleteBtn && deleteConfirmModal) {
+        cancelDeleteBtn.addEventListener('click', function() {
+            deleteConfirmModal.classList.add('hidden');
+        });
+    }
+
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', deletePatient);
+    }
+
+    // Modal dossiers patient
+    const patientRecordsModal = document.getElementById('patientRecordsModal');
+    const closeRecordsModalBtn = document.getElementById('closeRecordsModalBtn');
+
+    if (closeRecordsModalBtn && patientRecordsModal) {
+        closeRecordsModalBtn.addEventListener('click', function() {
+            patientRecordsModal.classList.add('hidden');
+        });
+    }
+
+    // Onglets des dossiers
     document.querySelectorAll('.records-tab-button').forEach(button => {
         button.addEventListener('click', function() {
             const tabName = this.dataset.tab;
 
+            // Réinitialiser tous les onglets
             document.querySelectorAll('.records-tab-button').forEach(btn => {
                 btn.classList.remove('active', 'border-primary', 'text-primary');
                 btn.classList.add('border-transparent', 'text-gray-500');
@@ -1104,53 +1144,84 @@ function setupModalEventListeners() {
                 content.classList.add('hidden');
             });
 
+            // Activer l'onglet sélectionné
             this.classList.add('active', 'border-primary', 'text-primary');
             this.classList.remove('border-transparent', 'text-gray-500');
 
-            document.getElementById(tabName + 'Tab').classList.remove('hidden');
+            const tabContent = document.getElementById(tabName + 'Tab');
+            if (tabContent) {
+                tabContent.classList.remove('hidden');
+            }
         });
     });
 
-    // Add sessions modal
-    document.getElementById('addSessionBtn').addEventListener('click', function() {
-        openAddSessionsModal(selectedPatient);
-    });
+    // Modal ajout séances
+    const addSessionBtn = document.getElementById('addSessionBtn');
+    const addSessionsModal = document.getElementById('addSessionsModal');
+    const closeAddSessionsBtn = document.getElementById('closeAddSessionsBtn');
+    const cancelAddSessionsBtn = document.getElementById('cancelAddSessionsBtn');
+    const submitAddSessionsBtn = document.getElementById('submitAddSessionsBtn');
+    const additionalSessions = document.getElementById('additionalSessions');
 
-    document.getElementById('closeAddSessionsBtn').addEventListener('click', function() {
-        document.getElementById('addSessionsModal').classList.add('hidden');
-    });
+    if (addSessionBtn) {
+        addSessionBtn.addEventListener('click', function() {
+            openAddSessionsModal(selectedPatient);
+        });
+    }
 
-    document.getElementById('cancelAddSessionsBtn').addEventListener('click', function() {
-        document.getElementById('addSessionsModal').classList.add('hidden');
-    });
+    if (closeAddSessionsBtn && addSessionsModal) {
+        closeAddSessionsBtn.addEventListener('click', function() {
+            addSessionsModal.classList.add('hidden');
+        });
+    }
 
-    document.getElementById('submitAddSessionsBtn').addEventListener('click', addSessionToPatient);
+    if (cancelAddSessionsBtn && addSessionsModal) {
+        cancelAddSessionsBtn.addEventListener('click', function() {
+            addSessionsModal.classList.add('hidden');
+        });
+    }
 
-    // Additional sessions input
-    document.getElementById('additionalSessions').addEventListener('input', function() {
-        const current = parseInt(document.getElementById('currentSessionsDisplay').value) || 0;
-        const additional = parseInt(this.value) || 0;
-        document.getElementById('totalSessionsDisplay').value = current + additional;
-    });
+    if (submitAddSessionsBtn) {
+        submitAddSessionsBtn.addEventListener('click', addSessionToPatient);
+    }
 
-    // Custom radio buttons
+    if (additionalSessions) {
+        additionalSessions.addEventListener('input', function() {
+            const current = parseInt(document.getElementById('currentSessionsDisplay').value) || 0;
+            const additional = parseInt(this.value) || 0;
+            const totalDisplay = document.getElementById('totalSessionsDisplay');
+            if (totalDisplay) {
+                totalDisplay.value = current + additional;
+            }
+        });
+    }
+
+    // Boutons radio personnalisés
     document.querySelectorAll('.custom-radio').forEach(radio => {
         radio.addEventListener('click', function() {
-            const form = this.closest('form');
-            form.querySelectorAll('.custom-radio').forEach(r => {
-                r.classList.remove('checked');
-            });
+            const form = this.closest('form') || this.closest('.modal');
+            if (form) {
+                form.querySelectorAll('.custom-radio').forEach(r => {
+                    r.classList.remove('checked');
+                });
+            }
             this.classList.add('checked');
         });
     });
 
-    // New anamnese button
-    document.getElementById('newAnamneseForPatientBtn')?.addEventListener('click', function() {
-        showNotification('info', 'Redirection vers le formulaire d\'anamnèse');
-    });
+    // Boutons nouvelles anamnèse et compte rendu
+    const newAnamneseBtn = document.getElementById('newAnamneseForPatientBtn');
+    const newCompteRenduBtn = document.getElementById('newCompteRenduForPatientBtn');
 
-    // New compte rendu button
-    document.getElementById('newCompteRenduForPatientBtn')?.addEventListener('click', function() {
-        showNotification('info', 'Redirection vers le formulaire de compte rendu');
-    });
+    if (newAnamneseBtn) {
+        newAnamneseBtn.addEventListener('click', function() {
+            showNotification('info', 'Redirection vers le formulaire d\'anamnèse');
+        });
+    }
+
+    if (newCompteRenduBtn) {
+        newCompteRenduBtn.addEventListener('click', function() {
+            showNotification('info', 'Redirection vers le formulaire de compte rendu');
+        });
+    }
 }

@@ -64,8 +64,7 @@ class ProfilAPI {
 
     static async uploadPhoto(profilId, photoBase64) {
         try {
-            console.log('🌐 API Call - Upload photo pour profil:', profilId);
-            console.log('🌐 URL appelée:', `${API_BASE_URL}/profil/${profilId}/upload-photo`);
+            console.log('📸 Début upload photo pour profil:', profilId);
 
             const response = await fetch(`${API_BASE_URL}/profil/${profilId}/upload-photo`, {
                 method: 'POST',
@@ -75,25 +74,23 @@ class ProfilAPI {
                 body: JSON.stringify({ photo: photoBase64 })
             });
 
-            console.log('🌐 Statut réponse:', response.status);
-
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('🌐 Erreur réponse:', errorText);
+                console.error('Erreur upload photo:', errorText);
                 throw new Error('Erreur lors de l\'upload de la photo');
             }
 
             const result = await response.json();
-            console.log('🌐 Réponse succès:', result);
+            console.log('✅ Photo uploadée avec succès');
             return result;
         } catch (error) {
-            console.error('🌐 Erreur API uploadPhoto:', error);
+            console.error('❌ Erreur API uploadPhoto:', error);
             throw error;
         }
     }
 }
 
-// Utilitaires
+// Utilitaires et notifications
 function showNotification(type, message, title = null) {
     const notification = document.getElementById('notification');
     const notificationTitle = document.getElementById('notificationTitle');
@@ -128,56 +125,31 @@ function showNotification(type, message, title = null) {
     }, 5000);
 }
 
+// Validation des formulaires
 function validateForm() {
-    const prenom = document.getElementById('prenom').value.trim();
-    const nom = document.getElementById('nom').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const telephone = document.getElementById('telephone').value.trim();
-    const specialite = document.getElementById('specialite').value.trim();
+    const fields = [
+        { id: 'prenom', message: 'Le prénom est requis' },
+        { id: 'nom', message: 'Le nom est requis' },
+        { id: 'email', message: 'Email valide requis', validator: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) },
+        { id: 'telephone', message: 'Le téléphone est requis' },
+        { id: 'specialite', message: 'La spécialité est requise' }
+    ];
 
     let isValid = true;
     const errors = [];
 
-    if (!prenom) {
-        document.getElementById('prenom').classList.add('form-error');
-        errors.push('Le prénom est requis');
-        isValid = false;
-    } else {
-        document.getElementById('prenom').classList.remove('form-error');
-    }
+    fields.forEach(field => {
+        const element = document.getElementById(field.id);
+        const value = element.value.trim();
 
-    if (!nom) {
-        document.getElementById('nom').classList.add('form-error');
-        errors.push('Le nom est requis');
-        isValid = false;
-    } else {
-        document.getElementById('nom').classList.remove('form-error');
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email || !emailRegex.test(email)) {
-        document.getElementById('email').classList.add('form-error');
-        errors.push('Email valide requis');
-        isValid = false;
-    } else {
-        document.getElementById('email').classList.remove('form-error');
-    }
-
-    if (!telephone) {
-        document.getElementById('telephone').classList.add('form-error');
-        errors.push('Le téléphone est requis');
-        isValid = false;
-    } else {
-        document.getElementById('telephone').classList.remove('form-error');
-    }
-
-    if (!specialite) {
-        document.getElementById('specialite').classList.add('form-error');
-        errors.push('La spécialité est requise');
-        isValid = false;
-    } else {
-        document.getElementById('specialite').classList.remove('form-error');
-    }
+        if (!value || (field.validator && !field.validator(value))) {
+            element.classList.add('form-error');
+            errors.push(field.message);
+            isValid = false;
+        } else {
+            element.classList.remove('form-error');
+        }
+    });
 
     if (!isValid) {
         showNotification('error', errors.join(', '), 'Erreurs de validation');
@@ -191,32 +163,27 @@ function validatePassword() {
     const newPassword = document.getElementById('newPassword').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
 
+    const validations = [
+        { field: 'currentPassword', value: currentPassword, message: 'Mot de passe actuel requis' },
+        { field: 'newPassword', value: newPassword, message: 'Le nouveau mot de passe doit faire au moins 6 caractères', validator: (val) => val.length >= 6 },
+        { field: 'confirmPassword', value: confirmPassword, message: 'Les mots de passe ne correspondent pas', validator: () => newPassword === confirmPassword }
+    ];
+
     let isValid = true;
     const errors = [];
 
-    if (!currentPassword) {
-        document.getElementById('currentPassword').classList.add('form-error');
-        errors.push('Mot de passe actuel requis');
-        isValid = false;
-    } else {
-        document.getElementById('currentPassword').classList.remove('form-error');
-    }
+    validations.forEach(validation => {
+        const element = document.getElementById(validation.field);
+        const isFieldValid = validation.value && (!validation.validator || validation.validator(validation.value));
 
-    if (!newPassword || newPassword.length < 6) {
-        document.getElementById('newPassword').classList.add('form-error');
-        errors.push('Le nouveau mot de passe doit faire au moins 6 caractères');
-        isValid = false;
-    } else {
-        document.getElementById('newPassword').classList.remove('form-error');
-    }
-
-    if (newPassword !== confirmPassword) {
-        document.getElementById('confirmPassword').classList.add('form-error');
-        errors.push('Les mots de passe ne correspondent pas');
-        isValid = false;
-    } else {
-        document.getElementById('confirmPassword').classList.remove('form-error');
-    }
+        if (!isFieldValid) {
+            element.classList.add('form-error');
+            errors.push(validation.message);
+            isValid = false;
+        } else {
+            element.classList.remove('form-error');
+        }
+    });
 
     if (!isValid) {
         showNotification('error', errors.join(', '), 'Erreurs de validation');
@@ -225,7 +192,7 @@ function validatePassword() {
     return isValid;
 }
 
-// Chargement des données profil
+// Chargement et mise à jour des données profil
 async function loadProfilData() {
     try {
         currentProfil = await ProfilAPI.getCurrentProfil();
@@ -234,24 +201,26 @@ async function loadProfilData() {
         console.log('📋 Profil chargé:', currentProfil);
 
         // Remplir les champs du formulaire
-        document.getElementById('prenom').value = currentProfil.prenom || '';
-        document.getElementById('nom').value = currentProfil.nom || '';
-        document.getElementById('email').value = currentProfil.email || '';
-        document.getElementById('telephone').value = currentProfil.telephone || '';
-        document.getElementById('specialite').value = currentProfil.specialite || '';
+        const fields = ['prenom', 'nom', 'email', 'telephone', 'specialite'];
+        fields.forEach(field => {
+            const element = document.getElementById(field);
+            if (element) element.value = currentProfil[field] || '';
+        });
 
-        // Mettre à jour l'affichage du nom
+        // Mettre à jour l'affichage
         updateProfilDisplay();
-
-        // ✅ CORRECTION : Charger la photo via l'endpoint
         await loadProfilePhoto();
 
-        // Mettre à jour le thème sélectionné
-        if (currentProfil.theme) {
-            selectTheme(currentProfil.theme);
-        }
+        // Configurer le thème
+        const savedTheme = currentProfil.theme || 'light';
+        console.log('🎨 Thème chargé:', savedTheme);
 
-        // Mettre à jour le switch de double authentification
+        if (window.themeManager) {
+            window.themeManager.setTheme(savedTheme);
+        }
+        selectTheme(savedTheme);
+
+        // Configurer la double authentification
         const twoFactorSwitch = document.getElementById('twoFactorSwitch');
         if (currentProfil.twoFactorEnabled) {
             twoFactorSwitch.classList.add('checked');
@@ -263,16 +232,12 @@ async function loadProfilData() {
     }
 }
 
-//Charger la photo depuis l'endpoint
 async function loadProfilePhoto() {
     if (!currentProfil) return;
 
     try {
         const timestamp = new Date().getTime();
         const url = `${API_BASE_URL}/profil/photo/${currentProfil.id}?t=${timestamp}`;
-
-        console.log('🔍 loadProfilePhoto - URL:', url);
-        console.log('🔍 loadProfilePhoto - currentProfil.id:', currentProfil.id);
 
         const response = await fetch(url, {
             cache: 'no-cache',
@@ -282,145 +247,57 @@ async function loadProfilePhoto() {
             }
         });
 
-        console.log('🔍 loadProfilePhoto - Response status:', response.status);
-        console.log('🔍 loadProfilePhoto - Response headers:', [...response.headers.entries()]);
-
         if (response.ok) {
             const blob = await response.blob();
             const imageUrl = URL.createObjectURL(blob);
-
-            console.log('🔍 loadProfilePhoto - Blob size:', blob.size);
-            console.log('🔍 loadProfilePhoto - Blob type:', blob.type);
-            console.log('🔍 loadProfilePhoto - Generated URL:', imageUrl);
-
-            // ✅ VÉRIFIER : Créer un hash du blob pour voir si l'image a vraiment changé
-            const arrayBuffer = await blob.arrayBuffer();
-            const hashBuffer = await crypto.subtle.digest('SHA-1', arrayBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            console.log('🔍 loadProfilePhoto - Image hash:', hashHex);
-
             updateProfilPhoto(imageUrl);
+            console.log('✅ Photo profil chargée');
         } else {
-            console.log('🔍 loadProfilePhoto - Pas de photo trouvée');
+            console.log('ℹ️ Aucune photo trouvée');
             updateProfilPhoto(null);
         }
     } catch (error) {
-        console.log('🔍 loadProfilePhoto - Erreur:', error);
+        console.log('⚠️ Erreur chargement photo:', error);
         updateProfilPhoto(null);
     }
-}
-
-function updateSidebarInfo() {
-    if (!currentProfil) return;
-
-    console.log('🔍 updateSidebarInfo - DÉBUT');
-    console.log('🔍 updateSidebarInfo - currentProfil:', currentProfil);
-
-    const updateElements = () => {
-        const sidebarName = document.getElementById('userName');
-        const sidebarSpecialty = document.getElementById('userProfession');
-        const sidebarAvatar = document.getElementById('userAvatar');
-
-        console.log('🔍 updateSidebarInfo - Éléments trouvés:', { sidebarName, sidebarSpecialty, sidebarAvatar });
-
-        if (sidebarName) {
-            const fullName = `${currentProfil.prenom || ''} ${currentProfil.nom || ''}`.trim();
-            sidebarName.textContent = fullName;
-            console.log('🔍 updateSidebarInfo - Nom mis à jour:', fullName);
-        }
-
-        if (sidebarSpecialty) {
-            sidebarSpecialty.textContent = currentProfil.specialite || 'Spécialité';
-            console.log('🔍 updateSidebarInfo - Spécialité mise à jour:', currentProfil.specialite);
-        }
-
-        if (sidebarAvatar) {
-            const existingImage = sidebarAvatar.querySelector('img');
-            console.log('🔍 updateSidebarInfo - Image existante:', existingImage ? 'OUI' : 'NON');
-
-            if (existingImage) {
-                console.log('🔍 updateSidebarInfo - URL image existante:', existingImage.src);
-            }
-
-            if (!existingImage) {
-                console.log('🔍 updateSidebarInfo - Pas d\'image, traitement avatar backend...');
-                if (currentProfil.avatar && Array.isArray(currentProfil.avatar)) {
-                    console.log('🔍 updateSidebarInfo - Avatar backend trouvé, taille:', currentProfil.avatar.length);
-                    try {
-                        const base64String = btoa(String.fromCharCode(...currentProfil.avatar));
-                        const dataUrl = `data:image/jpeg;base64,${base64String}`;
-                        sidebarAvatar.innerHTML = `<img src="${dataUrl}" alt="Avatar" class="w-full h-full object-cover rounded-full">`;
-                        console.log('🔍 updateSidebarInfo - Avatar backend appliqué');
-                    } catch (e) {
-                        console.error('🔍 updateSidebarInfo - Erreur conversion:', e);
-                        sidebarAvatar.innerHTML = `<span class="font-medium">${currentProfil.initiales}</span>`;
-                    }
-                } else if (currentProfil.initiales) {
-                    console.log('🔍 updateSidebarInfo - Affichage initiales:', currentProfil.initiales);
-                    sidebarAvatar.innerHTML = `<span class="font-medium">${currentProfil.initiales}</span>`;
-                }
-            } else {
-                console.log('🔍 updateSidebarInfo - Image existante, on ne touche pas');
-            }
-        }
-    };
-
-    console.log('🔍 updateSidebarInfo - Exécution immédiate');
-    updateElements();
-
-    console.log('🔍 updateSidebarInfo - Programmation timeouts');
-    setTimeout(() => {
-        console.log('🔍 updateSidebarInfo - Timeout 100ms');
-        updateElements();
-    }, 100);
-    setTimeout(() => {
-        console.log('🔍 updateSidebarInfo - Timeout 500ms');
-        updateElements();
-    }, 500);
-    setTimeout(() => {
-        console.log('🔍 updateSidebarInfo - Timeout 1000ms');
-        updateElements();
-    }, 1000);
 }
 
 function updateProfilDisplay() {
     if (!currentProfil) return;
 
-    console.log('🔄 Mise à jour de l\'affichage du profil');
+    console.log('🔄 Mise à jour affichage profil');
 
-    // Mettre à jour le nom complet affiché sur la page
+    // Nom complet sur la page
     const profileDisplayName = document.getElementById('profileDisplayName');
     if (profileDisplayName) {
         const fullName = `Dr. ${currentProfil.prenom || ''} ${currentProfil.nom || ''}`.trim();
         profileDisplayName.textContent = fullName;
-        console.log('✅ Nom affiché mis à jour:', fullName);
     }
 
-    // Mettre à jour la spécialité affichée
+    // Spécialité
     const profileDisplaySpecialty = document.getElementById('profileDisplaySpecialty');
     if (profileDisplaySpecialty) {
         profileDisplaySpecialty.textContent = currentProfil.specialite || 'Spécialité';
-        console.log('✅ Spécialité affichée mise à jour:', currentProfil.specialite);
     }
+
+    // Mettre à jour la sidebar
+    updateSidebarInfo();
 }
 
 function updateProfilPhoto(photoData) {
     const profileContainer = document.getElementById('profilePhotoContainer');
+    if (!profileContainer) return;
 
     if (photoData && Array.isArray(photoData)) {
         // Données backend (array de bytes)
         const base64String = btoa(String.fromCharCode(...photoData));
         const dataUrl = `data:image/jpeg;base64,${base64String}`;
         profileContainer.innerHTML = `<img src="${dataUrl}" alt="Photo de profil" class="w-full h-full object-cover">`;
-    } else if (photoData && typeof photoData === 'string' && photoData.startsWith('data:image')) {
-        // Base64 (upload)
-        profileContainer.innerHTML = `<img src="${photoData}" alt="Photo de profil" class="w-full h-full object-cover">`;
-    } else if (photoData && typeof photoData === 'string' && photoData.startsWith('blob:')) {
-        // Blob URL (endpoint)
+    } else if (photoData && typeof photoData === 'string' && (photoData.startsWith('data:image') || photoData.startsWith('blob:'))) {
+        // Base64 ou Blob URL
         profileContainer.innerHTML = `<img src="${photoData}" alt="Photo de profil" class="w-full h-full object-cover">`;
     } else {
-        // Pas de photo
+        // Pas de photo - afficher initiales ou icône
         if (currentProfil && currentProfil.initiales) {
             profileContainer.innerHTML = `<span class="text-xl font-medium text-gray-600">${currentProfil.initiales}</span>`;
         } else {
@@ -444,20 +321,56 @@ function updateSidebarPhoto(photoData) {
     }
 }
 
+function updateSidebarInfo() {
+    if (!currentProfil) return;
+
+    const updateElements = () => {
+        const sidebarName = document.getElementById('userName');
+        const sidebarSpecialty = document.getElementById('userProfession');
+
+        if (sidebarName) {
+            const fullName = `${currentProfil.prenom || ''} ${currentProfil.nom || ''}`.trim();
+            sidebarName.textContent = fullName;
+        }
+
+        if (sidebarSpecialty) {
+            sidebarSpecialty.textContent = currentProfil.specialite || 'Spécialité';
+        }
+    };
+
+    // Mise à jour immédiate et différée pour s'assurer que la sidebar est chargée
+    updateElements();
+    setTimeout(updateElements, 100);
+    setTimeout(updateElements, 500);
+}
+
 // Gestion du thème
 function selectTheme(theme) {
-    document.querySelectorAll('.theme-option').forEach(option => {
-        option.classList.remove('selected');
-        const indicator = option.querySelector('.theme-indicator');
-        if (indicator) indicator.classList.add('hidden');
-    });
+    if (window.themeManager) {
+        window.themeManager.setTheme(theme);
+    } else {
+        // Fallback si ThemeManager n'est pas chargé
+        document.querySelectorAll('.theme-option').forEach(option => {
+            option.classList.remove('selected');
+            const indicator = option.querySelector('.theme-indicator');
+            if (indicator) indicator.classList.add('hidden');
+        });
 
-    const selectedOption = document.querySelector(`.theme-option[data-theme="${theme}"]`);
-    if (selectedOption) {
-        selectedOption.classList.add('selected');
-        const indicator = selectedOption.querySelector('.theme-indicator');
-        if (indicator) indicator.classList.remove('hidden');
+        const selectedOption = document.querySelector(`.theme-option[data-theme="${theme}"]`);
+        if (selectedOption) {
+            selectedOption.classList.add('selected');
+            const indicator = selectedOption.querySelector('.theme-indicator');
+            if (indicator) indicator.classList.remove('hidden');
+        }
     }
+}
+
+function getSelectedTheme() {
+    if (window.themeManager) {
+        return window.themeManager.getCurrentTheme();
+    }
+    const selectedTheme = document.querySelector('.theme-option.selected');
+    return selectedTheme ? selectedTheme.dataset.theme : 'light';
 }
 
 // Gestion des images
@@ -467,27 +380,31 @@ function setupImageHandling() {
     const zoomValue = document.getElementById('zoomValue');
     const dropArea = document.getElementById('dropArea');
 
-    photoUpload.addEventListener('change', handleFileUpload);
+    if (photoUpload) photoUpload.addEventListener('change', handleFileUpload);
+    if (zoomSlider) {
+        zoomSlider.addEventListener('input', function() {
+            updateZoom();
+            if (zoomValue) zoomValue.textContent = `${zoomSlider.value}%`;
+        });
+    }
 
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-    });
+    if (dropArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+        });
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, () => dropArea.classList.add('drag-over'), false);
-    });
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('drag-over'), false);
+        });
 
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, () => dropArea.classList.remove('drag-over'), false);
-    });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('drag-over'), false);
+        });
 
-    dropArea.addEventListener('drop', handleDrop, false);
+        dropArea.addEventListener('drop', handleDrop, false);
+    }
 
-    zoomSlider.addEventListener('input', function() {
-        updateZoom();
-        zoomValue.textContent = `${zoomSlider.value}%`;
-    });
-
+    // Options d'avatar
     document.querySelectorAll('.avatar-option').forEach(option => {
         option.addEventListener('click', function() {
             document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
@@ -536,6 +453,7 @@ function processImageFile(file) {
 
 function createImagePreview(imageSrc) {
     const imagePreview = document.getElementById('imagePreview');
+    if (!imagePreview) return;
 
     const img = document.createElement('img');
     img.src = imageSrc;
@@ -548,8 +466,11 @@ function createImagePreview(imageSrc) {
         imagePreview.appendChild(img);
 
         currentImage = img;
-        document.getElementById('zoomSlider').value = 100;
-        document.getElementById('zoomValue').textContent = '100%';
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomValue = document.getElementById('zoomValue');
+        if (zoomSlider) zoomSlider.value = 100;
+        if (zoomValue) zoomValue.textContent = '100%';
+
         translateX = 0;
         translateY = 0;
         updateZoom();
@@ -601,7 +522,8 @@ function setupImageDrag() {
 
 function updateZoom() {
     if (currentImage) {
-        const zoomValue = document.getElementById('zoomSlider').value / 100;
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomValue = zoomSlider ? zoomSlider.value / 100 : 1;
         currentImage.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomValue})`;
         calculateBoundaries();
     }
@@ -610,7 +532,8 @@ function updateZoom() {
 function calculateBoundaries() {
     if (!currentImage) return;
 
-    const zoomValue = document.getElementById('zoomSlider').value / 100;
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = zoomSlider ? zoomSlider.value / 100 : 1;
     const cropSize = 192;
 
     const imgWidth = currentImage.naturalWidth || currentImage.width;
@@ -652,7 +575,8 @@ function dragImage(e) {
     translateX = Math.max(minX, Math.min(maxX, newX));
     translateY = Math.max(minY, Math.min(maxY, newY));
 
-    const zoomValue = document.getElementById('zoomSlider').value / 100;
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = zoomSlider ? zoomSlider.value / 100 : 1;
     currentImage.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomValue})`;
 
     startX = x;
@@ -672,65 +596,76 @@ function setupCamera() {
     const cameraPlaceholder = document.getElementById('cameraPlaceholder');
     const takePictureButton = document.getElementById('takePictureButton');
 
-    cameraButton.addEventListener('click', function() {
-        document.getElementById('profilePhotoModal').classList.add('hidden');
-        cameraModal.classList.remove('hidden');
+    if (cameraButton) {
+        cameraButton.addEventListener('click', function() {
+            const profilePhotoModal = document.getElementById('profilePhotoModal');
+            if (profilePhotoModal) profilePhotoModal.classList.add('hidden');
+            if (cameraModal) cameraModal.classList.remove('hidden');
 
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function(mediaStream) {
-                    stream = mediaStream;
-                    cameraFeed.srcObject = mediaStream;
-                    cameraFeed.classList.remove('hidden');
-                    cameraPlaceholder.classList.add('hidden');
-                    cameraFeed.play();
-                })
-                .catch(function(err) {
-                    console.log("Erreur caméra: " + err);
-                    cameraFeed.classList.add('hidden');
-                    cameraPlaceholder.classList.remove('hidden');
-                });
-        } else {
-            cameraFeed.classList.add('hidden');
-            cameraPlaceholder.classList.remove('hidden');
-        }
-    });
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(mediaStream) {
+                        stream = mediaStream;
+                        if (cameraFeed) {
+                            cameraFeed.srcObject = mediaStream;
+                            cameraFeed.classList.remove('hidden');
+                            cameraFeed.play();
+                        }
+                        if (cameraPlaceholder) cameraPlaceholder.classList.add('hidden');
+                    })
+                    .catch(function(err) {
+                        console.log("Erreur caméra: " + err);
+                        if (cameraFeed) cameraFeed.classList.add('hidden');
+                        if (cameraPlaceholder) cameraPlaceholder.classList.remove('hidden');
+                    });
+            } else {
+                if (cameraFeed) cameraFeed.classList.add('hidden');
+                if (cameraPlaceholder) cameraPlaceholder.classList.remove('hidden');
+            }
+        });
+    }
 
-    closeCameraModal.addEventListener('click', function() {
-        cameraModal.classList.add('hidden');
-        document.getElementById('profilePhotoModal').classList.remove('hidden');
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
-        }
-    });
-
-    takePictureButton.addEventListener('click', function() {
-        if (cameraFeed.srcObject) {
-            const canvas = document.createElement('canvas');
-            canvas.width = cameraFeed.videoWidth;
-            canvas.height = cameraFeed.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
-            const dataURL = canvas.toDataURL('image/png');
-
-            createImagePreview(dataURL);
-
-            cameraModal.classList.add('hidden');
-            document.getElementById('profilePhotoModal').classList.remove('hidden');
+    if (closeCameraModal) {
+        closeCameraModal.addEventListener('click', function() {
+            if (cameraModal) cameraModal.classList.add('hidden');
+            const profilePhotoModal = document.getElementById('profilePhotoModal');
+            if (profilePhotoModal) profilePhotoModal.classList.remove('hidden');
 
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
             }
-        }
-    });
+        });
+    }
+
+    if (takePictureButton) {
+        takePictureButton.addEventListener('click', function() {
+            if (cameraFeed && cameraFeed.srcObject) {
+                const canvas = document.createElement('canvas');
+                canvas.width = cameraFeed.videoWidth;
+                canvas.height = cameraFeed.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(cameraFeed, 0, 0, canvas.width, canvas.height);
+                const dataURL = canvas.toDataURL('image/png');
+
+                createImagePreview(dataURL);
+
+                if (cameraModal) cameraModal.classList.add('hidden');
+                const profilePhotoModal = document.getElementById('profilePhotoModal');
+                if (profilePhotoModal) profilePhotoModal.classList.remove('hidden');
+
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                    stream = null;
+                }
+            }
+        });
+    }
 }
 
-// Sauvegarde du profil
+// Sauvegarde et actions principales
 async function saveProfil() {
     if (!validateForm()) return;
-
     if (!currentProfil) {
         showNotification('error', 'Aucun profil connecté');
         return;
@@ -756,34 +691,34 @@ async function saveProfil() {
         const updatedProfil = await ProfilAPI.updateProfil(currentProfil.id, profilData);
         currentProfil = updatedProfil;
 
-        // 2. ✅ Sauvegarder la photo en attente si elle existe
+        // Forcer l'application du thème après sauvegarde
+        if (window.themeManager && updatedProfil.theme) {
+            window.themeManager.setTheme(updatedProfil.theme);
+        }
+
+        // 2. Sauvegarder la photo en attente si elle existe
         if (pendingPhotoData) {
-            console.log('📸 DÉBUT - Sauvegarde de la photo en attente dans la BD...');
+            console.log('📸 Sauvegarde de la photo en attente...');
 
             try {
-                const response = await ProfilAPI.uploadPhoto(currentProfil.id, pendingPhotoData);
-                console.log('📸 SUCCÈS - Photo uploadée');
+                await ProfilAPI.uploadPhoto(currentProfil.id, pendingPhotoData);
 
-                // ✅ Attendre pour la synchronisation BD
-                console.log('⏱️ Attente de 2 secondes...');
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                // Attendre un peu pour la synchronisation
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
-                console.log('🔄 Rechargement photo depuis BD...');
+                // Recharger la photo depuis la base de données
                 await loadProfilePhoto();
 
                 pendingPhotoData = null;
-                console.log('✅ Photo sauvegardée dans la BD');
-
+                console.log('✅ Photo sauvegardée');
             } catch (photoError) {
-                console.error('❌ ERREUR upload photo:', photoError);
+                console.error('❌ Erreur upload photo:', photoError);
                 showNotification('error', 'Erreur lors de la sauvegarde de la photo');
                 return;
             }
         }
 
         updateProfilDisplay();
-        updateSidebarInfo();
-
         showNotification('success', 'Profil mis à jour avec succès !');
 
     } catch (error) {
@@ -795,10 +730,8 @@ async function saveProfil() {
     }
 }
 
-// Changement de mot de passe
 async function changePassword() {
     if (!validatePassword()) return;
-
     if (!currentProfil) {
         showNotification('error', 'Aucun profil connecté');
         return;
@@ -816,7 +749,10 @@ async function changePassword() {
 
         await ProfilAPI.changePassword(currentProfil.id, passwords);
 
-        document.getElementById('passwordForm').reset();
+        // Réinitialiser le formulaire
+        const passwordForm = document.getElementById('passwordForm');
+        if (passwordForm) passwordForm.reset();
+
         document.querySelectorAll('#passwordForm input').forEach(input => {
             input.classList.remove('form-error');
         });
@@ -832,7 +768,6 @@ async function changePassword() {
     }
 }
 
-// Sauvegarde de la photo de profil
 async function saveProfilPhoto() {
     if (!currentImage || !currentProfil) {
         showNotification('error', 'Aucune image sélectionnée');
@@ -851,18 +786,21 @@ async function saveProfilPhoto() {
         canvas.width = cropSize;
         canvas.height = cropSize;
 
+        // Créer un cercle de découpe
         ctx.beginPath();
         ctx.arc(cropSize/2, cropSize/2, cropSize/2, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
 
+        // Calculer les dimensions pour le recadrage
         const container = document.getElementById('imagePreviewContainer');
         const overlay = document.getElementById('cropOverlay');
         const containerRect = container.getBoundingClientRect();
         const overlayRect = overlay.getBoundingClientRect();
         const imageRect = currentImage.getBoundingClientRect();
 
-        const zoomValue = document.getElementById('zoomSlider').value / 100;
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomValue = zoomSlider ? zoomSlider.value / 100 : 1;
 
         const displayedWidth = currentImage.offsetWidth;
         const displayedHeight = currentImage.offsetHeight;
@@ -887,12 +825,13 @@ async function saveProfilPhoto() {
 
         const croppedImageData = canvas.toDataURL('image/png');
 
-        // ✅ APERÇU SEULEMENT : Stocker la photo et l'afficher (pas de sauvegarde BD)
+        // Stocker la photo pour la sauvegarde avec le profil
         console.log('👁️ Aperçu de la photo (pas encore sauvegardée)');
         pendingPhotoData = croppedImageData;
         updateProfilPhoto(croppedImageData);
 
-        document.getElementById('profilePhotoModal').classList.add('hidden');
+        const profilePhotoModal = document.getElementById('profilePhotoModal');
+        if (profilePhotoModal) profilePhotoModal.classList.add('hidden');
 
         showNotification('info', 'Aperçu appliqué ! Cliquez sur "Enregistrer les modifications" pour sauvegarder définitivement.');
 
@@ -905,89 +844,133 @@ async function saveProfilPhoto() {
     }
 }
 
-// Utilitaires pour le thème
-function getSelectedTheme() {
-    const selectedTheme = document.querySelector('.theme-option.selected');
-    return selectedTheme ? selectedTheme.dataset.theme : 'light';
+// Fonction simplifiée pour le toggle sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const openSidebarBtn = document.getElementById('openSidebarBtn');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    if (!sidebar || !mainContent || !openSidebarBtn || !closeSidebarBtn) return;
+
+    const isOpen = !sidebar.classList.contains('sidebar-hidden');
+
+    if (isOpen) {
+        // Fermer
+        sidebar.classList.add('sidebar-hidden');
+        mainContent.classList.remove('ml-64');
+        openSidebarBtn.classList.remove('hidden');
+        openSidebarBtn.style.display = 'flex';
+        closeSidebarBtn.classList.add('hidden');
+    } else {
+        // Ouvrir
+        sidebar.classList.remove('sidebar-hidden');
+        mainContent.classList.add('ml-64');
+        openSidebarBtn.classList.add('hidden');
+        openSidebarBtn.style.display = 'none';
+        closeSidebarBtn.classList.remove('hidden');
+    }
 }
 
-// Initialisation de la page
+// Configuration des event listeners
+function setupEventListeners() {
+    // Boutons principaux
+    const saveButton = document.getElementById('saveButton');
+    const changePasswordBtn = document.getElementById('changePasswordBtn');
+    const cancelButton = document.getElementById('cancelButton');
+
+    if (saveButton) saveButton.addEventListener('click', saveProfil);
+    if (changePasswordBtn) changePasswordBtn.addEventListener('click', changePassword);
+    if (cancelButton) cancelButton.addEventListener('click', () => location.reload());
+
+    // Switch double authentification
+    const twoFactorSwitch = document.getElementById('twoFactorSwitch');
+    if (twoFactorSwitch) {
+        twoFactorSwitch.addEventListener('click', function() {
+            this.classList.toggle('checked');
+        });
+    }
+
+    // Thèmes
+    document.querySelectorAll('.theme-option').forEach(option => {
+        option.addEventListener('click', function() {
+            const theme = this.dataset.theme;
+            selectTheme(theme);
+        });
+    });
+
+    // Modals photo de profil
+    const profilePhotoButton = document.getElementById('profilePhotoButton');
+    const profilePhotoModal = document.getElementById('profilePhotoModal');
+    const closeProfileModal = document.getElementById('closeProfileModal');
+    const cancelProfilePhoto = document.getElementById('cancelProfilePhoto');
+    const saveProfilePhoto = document.getElementById('saveProfilePhoto');
+
+    if (profilePhotoButton && profilePhotoModal) {
+        profilePhotoButton.addEventListener('click', function() {
+            profilePhotoModal.classList.remove('hidden');
+        });
+    }
+
+    if (closeProfileModal && profilePhotoModal) {
+        closeProfileModal.addEventListener('click', function() {
+            profilePhotoModal.classList.add('hidden');
+        });
+    }
+
+    if (cancelProfilePhoto && profilePhotoModal) {
+        cancelProfilePhoto.addEventListener('click', function() {
+            profilePhotoModal.classList.add('hidden');
+        });
+    }
+
+    if (saveProfilePhoto) {
+        saveProfilePhoto.addEventListener('click', saveProfilPhoto);
+    }
+
+    // Configuration des fonctionnalités d'images et caméra
+    setupImageHandling();
+    setupCamera();
+}
+
+// Initialisation principale
 document.addEventListener('DOMContentLoaded', async function() {
-    // 1. Charger sidebar
+    console.log('🚀 Initialisation de la page profil...');
+
+    // 1. Charger la sidebar
     try {
         const response = await fetch('/partials/sidebar.html');
         const sidebarHTML = await response.text();
         document.getElementById('sidebar-container').innerHTML = sidebarHTML;
         console.log('✅ Sidebar chargée');
     } catch (error) {
-        console.error("Erreur lors du chargement de la sidebar :", error);
+        console.error("❌ Erreur lors du chargement de la sidebar :", error);
     }
 
-    // 2. Récupérer les éléments
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    const openSidebarBtn = document.getElementById('openSidebarBtn');
-    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+    // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
+    setTimeout(() => {
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 
-    function toggleSidebar() {
-        console.log('🔄 toggleSidebar appelé');
-        const isOpen = !sidebar.classList.contains('sidebar-hidden');
-        console.log('📍 Sidebar actuellement ouverte:', isOpen);
+        if (sidebar && mainContent && openSidebarBtn && closeSidebarBtn) {
+            // Event listeners pour le toggle
+            openSidebarBtn.addEventListener('click', toggleSidebar);
+            closeSidebarBtn.addEventListener('click', toggleSidebar);
 
-        if (isOpen) {
-            // Fermer
-            console.log('🔒 Fermeture de la sidebar...');
-            sidebar.classList.add('sidebar-hidden');
-            mainContent.classList.remove('ml-64');
-
-            // ✅ FORCE l'affichage du bouton d'ouverture
-            openSidebarBtn.classList.remove('hidden');
-            openSidebarBtn.style.display = 'flex';
-
-            // ✅ REMETTRE l'event listener après avoir rendu visible
-            openSidebarBtn.onclick = function(e) {
-                console.log('🖱️ CLICK via onclick sur openSidebarBtn !');
-                toggleSidebar();
-            };
-
-            closeSidebarBtn.classList.add('hidden');
-            console.log('✅ Bouton ouverture forcé visible + event listener remis');
-        } else {
-            // Ouvrir
-            console.log('🔓 Ouverture de la sidebar...');
+            // État initial : sidebar ouverte
             sidebar.classList.remove('sidebar-hidden');
             mainContent.classList.add('ml-64');
-
-            // ✅ FORCE le masquage du bouton d'ouverture
             openSidebarBtn.classList.add('hidden');
             openSidebarBtn.style.display = 'none';
-
             closeSidebarBtn.classList.remove('hidden');
-            console.log('✅ Bouton ouverture forcé caché');
+
+            console.log('✅ Toggle sidebar configuré');
         }
-    }
+    }, 200);
 
-    // 3. Event listeners
-    openSidebarBtn.addEventListener('click', function(e) {
-        console.log('🖱️ CLICK sur openSidebarBtn détecté !');
-        toggleSidebar();
-    });
-
-    closeSidebarBtn.addEventListener('click', function(e) {
-        console.log('🖱️ CLICK sur closeSidebarBtn détecté !');
-        toggleSidebar();
-    });
-
-    // 4. ✅ État initial corrigé
-    sidebar.classList.remove('sidebar-hidden');
-    mainContent.classList.add('ml-64');
-    // ✅ FORCER le bouton d'ouverture caché au chargement
-    openSidebarBtn.classList.add('hidden');
-    openSidebarBtn.style.display = 'none';
-    closeSidebarBtn.classList.remove('hidden');
-    console.log('✅ État initial défini - bouton ouverture caché');
-
-    // 5. Date actuelle
+    // 3. Configurer la date actuelle
     const currentDate = document.getElementById('currentDate');
     if (currentDate) {
         const today = new Date();
@@ -999,45 +982,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
 
-    // 6. Le reste
+    // 4. Configurer les event listeners et charger les données
     setupEventListeners();
     await loadProfilData();
+
+    console.log('✅ Initialisation profil terminée');
 });
-
-function setupEventListeners() {
-    // Boutons principaux
-    document.getElementById('saveButton').addEventListener('click', saveProfil);
-    document.getElementById('changePasswordBtn').addEventListener('click', changePassword);
-    document.getElementById('cancelButton').addEventListener('click', () => location.reload());
-
-    // Switch double authentification
-    document.getElementById('twoFactorSwitch').addEventListener('click', function() {
-        this.classList.toggle('checked');
-    });
-
-    // Thèmes
-    document.querySelectorAll('.theme-option').forEach(option => {
-        option.addEventListener('click', function() {
-            selectTheme(this.dataset.theme);
-        });
-    });
-
-    // Photo de profil modal
-    document.getElementById('profilePhotoButton').addEventListener('click', function() {
-        document.getElementById('profilePhotoModal').classList.remove('hidden');
-    });
-
-    document.getElementById('closeProfileModal').addEventListener('click', function() {
-        document.getElementById('profilePhotoModal').classList.add('hidden');
-    });
-
-    document.getElementById('cancelProfilePhoto').addEventListener('click', function() {
-        document.getElementById('profilePhotoModal').classList.add('hidden');
-    });
-
-    document.getElementById('saveProfilePhoto').addEventListener('click', saveProfilPhoto);
-
-    // Setup des fonctionnalités d'images
-    setupImageHandling();
-    setupCamera();
-}

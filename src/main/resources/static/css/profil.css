@@ -139,15 +139,16 @@ body {
     background-color: rgba(91, 103, 224, 0.05);
 }
 
-/* Notification Styles */
+/* Notification Styles - Force des couleurs lisibles */
 .notification {
     position: fixed;
     top: 1rem;
     right: 1rem;
-    background: white;
+    background: #ffffff !important;
+    color: #1f2937 !important;
     border-left: 4px solid;
     border-radius: 12px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1) !important;
     padding: 1rem 1.25rem;
     display: flex;
     align-items: center;
@@ -174,27 +175,27 @@ body {
 .notification-title {
     font-weight: 500;
     margin-bottom: 0.25rem;
-    color: #1f2937;
+    color: #1f2937 !important;
     font-size: 0.95rem;
 }
 
 .notification-message {
     font-size: 0.875rem;
-    color: #4b5563;
+    color: #4b5563 !important;
     line-height: 1.4;
 }
 
 .notification-close {
     margin-left: 0.875rem;
     cursor: pointer;
-    color: #9ca3af;
+    color: #9ca3af !important;
     font-size: 1.25rem;
     line-height: 1;
     transition: color 0.2s;
 }
 
 .notification-close:hover {
-    color: #6b7280;
+    color: #6b7280 !important;
 }
 
 .notification.success {
@@ -219,6 +220,28 @@ body {
 
 .notification.info .notification-icon {
     color: #3b82f6;
+}
+
+/* Force pour le thème sombre */
+.theme-dark .notification {
+    background: #374151 !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.theme-dark .notification-title {
+    color: #f9fafb !important;
+}
+
+.theme-dark .notification-message {
+    color: #d1d5db !important;
+}
+
+.theme-dark .notification-close {
+    color: #9ca3af !important;
+}
+
+.theme-dark .notification-close:hover {
+    color: #d1d5db !important;
 }
 
 /* Form Styles */
