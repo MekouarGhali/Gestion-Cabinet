@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profil Utilisateur</title>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#5b67e0',secondary:'#e0e7ff'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <style> :where([class^="ri-"])::before { content: "\f3c2"; } </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/profil.css">
+</head>
+<body class="bg-gray-50">
+<div class="flex h-screen overflow-hidden">
+  <!-- Sidebar Navigation -->
+  <div id="sidebar-container"></div>
+
+  <!-- Main Content -->
+  <main id="mainContent" class="flex-1 flex flex-col overflow-hidden ml-64">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 py-[22px] px-6 flex justify-between items-center">
+      <div class="flex items-center">
+        <button id="openSidebarBtn" class="burger-btn text-gray-600 mr-6">
+          <i class="ri-menu-line text-xl"></i>
+        </button>
+        <h1 class="text-xl font-semibold text-gray-800">Paramètres du profil</h1>
+        <div class="ml-6 text-sm text-gray-500" id="currentDate"></div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-6 bg-gray-50">
+      <div class="max-w-4xl mx-auto">
+        <!-- Profile Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Informations personnelles</h2>
+          <div class="flex items-center mb-6">
+            <div class="relative mr-6">
+              <div id="profilePhotoContainer" class="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                <i class="ri-user-line text-gray-400 text-4xl" id="profilePhotoIcon"></i>
+              </div>
+              <button id="profilePhotoButton" class="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-md">
+                <i class="ri-pencil-line"></i>
+              </button>
+            </div>
+            <div>
+              <h3 id="profileDisplayName" class="text-xl font-medium">Dr. Nom Prénom</h3>
+              <p id="profileDisplaySpecialty" class="text-gray-500">Spécialité</p>
+            </div>
+          </div>
+          <form id="profileForm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                <input type="text" id="prenom" name="prenom" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                <input type="text" id="nom" name="nom" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" id="email" name="email" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+                <input type="tel" id="telephone" name="telephone" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Spécialité</label>
+                <input type="text" id="specialite" name="specialite" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Theme Settings -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Paramètres du thème</h2>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-3">Mode d'affichage</label>
+            <div class="flex space-x-4">
+              <div class="theme-option flex-1 cursor-pointer" data-theme="light">
+                <div class="border border-gray-200 rounded-lg p-3 mb-2 theme-preview">
+                  <div class="bg-white border border-gray-200 rounded-md p-2">
+                    <div class="h-4 w-24 bg-gray-200 rounded mb-2"></div>
+                    <div class="h-3 w-32 bg-gray-100 rounded"></div>
+                  </div>
+                </div>
+                <div class="flex items-center justify-center">
+                  <div class="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center mr-2">
+                    <div class="w-3 h-3 rounded-full bg-primary theme-indicator"></div>
+                  </div>
+                  <span class="text-sm">Clair</span>
+                </div>
+              </div>
+              <div class="theme-option flex-1 cursor-pointer" data-theme="dark">
+                <div class="border border-gray-200 rounded-lg p-3 mb-2 theme-preview">
+                  <div class="bg-gray-800 border border-gray-700 rounded-md p-2">
+                    <div class="h-4 w-24 bg-gray-600 rounded mb-2"></div>
+                    <div class="h-3 w-32 bg-gray-700 rounded"></div>
+                  </div>
+                </div>
+                <div class="flex items-center justify-center">
+                  <div class="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center mr-2">
+                    <div class="w-3 h-3 rounded-full bg-primary theme-indicator hidden"></div>
+                  </div>
+                  <span class="text-sm">Sombre</span>
+                </div>
+              </div>
+              <div class="theme-option flex-1 cursor-pointer" data-theme="auto">
+                <div class="border border-gray-200 rounded-lg p-3 mb-2 theme-preview">
+                  <div class="bg-gradient-to-r from-white to-gray-800 border border-gray-200 rounded-md p-2">
+                    <div class="h-4 w-24 bg-gray-400 rounded mb-2"></div>
+                    <div class="h-3 w-32 bg-gray-300 rounded"></div>
+                  </div>
+                </div>
+                <div class="flex items-center justify-center">
+                  <div class="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center mr-2">
+                    <div class="w-3 h-3 rounded-full bg-primary theme-indicator hidden"></div>
+                  </div>
+                  <span class="text-sm">Auto</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Sécurité</h2>
+          <div class="space-y-6">
+            <div>
+              <h3 class="text-sm font-medium text-gray-700 mb-3">Changer le mot de passe</h3>
+              <form id="passwordForm">
+                <div class="space-y-3">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Mot de passe actuel</label>
+                    <input type="password" id="currentPassword" placeholder="••••••••" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Nouveau mot de passe</label>
+                    <input type="password" id="newPassword" placeholder="••••••••" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Confirmer le nouveau mot de passe</label>
+                    <input type="password" id="confirmPassword" placeholder="••••••••" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                  </div>
+                  <button type="button" id="changePasswordBtn" class="px-4 py-2 bg-gray-600 text-white rounded-button hover:bg-gray-700 whitespace-nowrap">
+                    Changer le mot de passe
+                  </button>
+                </div>
+              </form>
+            </div>
+            <div>
+              <h3 class="text-sm font-medium text-gray-700 mb-3">Authentification à deux facteurs</h3>
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-gray-600">Protégez votre compte avec l'authentification à deux facteurs</p>
+                </div>
+                <div class="custom-switch" id="twoFactorSwitch">
+                  <input type="checkbox" id="twoFactorToggle" class="hidden">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end space-x-4 mb-8">
+          <button id="cancelButton" class="px-4 py-2 border border-gray-300 rounded-button text-gray-700 hover:bg-gray-50 whitespace-nowrap">
+            Annuler
+          </button>
+          <button id="saveButton" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+            Enregistrer les modifications
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Profile Photo Modal -->
+<div id="profilePhotoModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg w-full max-w-2xl mx-4">
+    <div class="flex items-center justify-between p-4 border-b border-gray-200">
+      <h3 class="text-lg font-medium">Modifier votre photo de profil</h3>
+      <button id="closeProfileModal" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
+        <i class="ri-close-line text-xl"></i>
+      </button>
+    </div>
+    <div class="p-6">
+      <div class="flex flex-col md:flex-row gap-6">
+        <!-- Left side: Preview and crop -->
+        <div class="flex-1">
+          <div class="mb-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Aperçu</h4>
+            <div id="imagePreviewContainer" class="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden relative">
+              <div id="imagePreview" class="w-full h-full flex items-center justify-center">
+                <i class="ri-user-line text-gray-400 text-4xl"></i>
+              </div>
+              <div id="cropOverlay" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-dashed border-white rounded-full pointer-events-none" style="box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);"></div>
+            </div>
+          </div>
+          <div class="mb-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Ajustement</h4>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-gray-500">Zoom</span>
+              <input id="zoomSlider" type="range" min="50" max="200" value="100" step="1" class="w-64">
+              <span id="zoomValue" class="text-sm text-gray-600">100%</span>
+            </div>
+          </div>
+        </div>
+        <!-- Right side: Options -->
+        <div class="md:w-64">
+          <h4 class="text-sm font-medium text-gray-700 mb-3">Options</h4>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm text-gray-600 mb-2">Télécharger une image</label>
+              <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center" id="dropArea">
+                <div class="w-10 h-10 mx-auto mb-2 rounded-full bg-primary bg-opacity-10 flex items-center justify-center">
+                  <i class="ri-upload-2-line text-primary"></i>
+                </div>
+                <p class="text-xs text-gray-600 mb-2">Glissez-déposez ou</p>
+                <label for="photoUpload" class="px-3 py-1.5 bg-primary text-white text-sm rounded-button hover:bg-primary/90 cursor-pointer whitespace-nowrap inline-block">
+                  Parcourir
+                </label>
+                <input type="file" id="photoUpload" accept="image/*" class="hidden">
+                <p class="text-xs text-gray-500 mt-2">PNG, JPG (max. 5MB)</p>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-2">Prendre une photo</label>
+              <button id="cameraButton" class="w-full px-3 py-2 border border-gray-300 rounded-button text-gray-700 hover:bg-gray-50 flex items-center justify-center whitespace-nowrap">
+                <i class="ri-camera-line mr-2"></i>
+                Utiliser la caméra
+              </button>
+            </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-2">Avatars prédéfinis</label>
+              <div class="grid grid-cols-4 gap-2">
+                <div class="avatar-option cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary" data-avatar="avatar1">
+                  <div class="w-full h-12 bg-blue-200 flex items-center justify-center text-blue-700 font-medium">A1</div>
+                </div>
+                <div class="avatar-option cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary" data-avatar="avatar2">
+                  <div class="w-full h-12 bg-green-200 flex items-center justify-center text-green-700 font-medium">A2</div>
+                </div>
+                <div class="avatar-option cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary" data-avatar="avatar3">
+                  <div class="w-full h-12 bg-purple-200 flex items-center justify-center text-purple-700 font-medium">A3</div>
+                </div>
+                <div class="avatar-option cursor-pointer rounded-lg overflow-hidden border-2 border-transparent hover:border-primary" data-avatar="avatar4">
+                  <div class="w-full h-12 bg-red-200 flex items-center justify-center text-red-700 font-medium">A4</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center justify-end p-4 border-t border-gray-200 space-x-3">
+      <button id="cancelProfilePhoto" class="px-4 py-2 border border-gray-300 rounded-button text-gray-700 hover:bg-gray-50 whitespace-nowrap">Annuler</button>
+      <button id="saveProfilePhoto" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">Appliquer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Camera Modal -->
+<div id="cameraModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg w-full max-w-md mx-4">
+    <div class="flex items-center justify-between p-4 border-b border-gray-200">
+      <h3 class="text-lg font-medium">Prendre une photo</h3>
+      <button id="closeCameraModal" class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700">
+        <i class="ri-close-line text-xl"></i>
+      </button>
+    </div>
+    <div class="p-4">
+      <div id="cameraContainer" class="w-full h-64 bg-gray-100 rounded-lg overflow-hidden">
+        <video id="cameraFeed" class="w-full h-full object-cover hidden"></video>
+        <div id="cameraPlaceholder" class="w-full h-full flex items-center justify-center">
+          <div class="text-center">
+            <div class="w-12 h-12 mx-auto mb-2 rounded-full bg-gray-200 flex items-center justify-center">
+              <i class="ri-camera-line text-gray-400 text-xl"></i>
+            </div>
+            <p class="text-sm text-gray-500">Caméra non disponible</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center justify-center p-4 border-t border-gray-200">
+      <button id="takePictureButton" class="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center shadow-md">
+        <i class="ri-camera-line text-xl"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Notification -->
+<div id="notification" class="notification">
+  <div class="notification-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+    </svg>
+  </div>
+  <div class="notification-content">
+    <div class="notification-title" id="notificationTitle">Succès</div>
+    <div class="notification-message" id="notificationMessage">Profil mis à jour avec succès !</div>
+  </div>
+  <div class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</div>
+</div>
+
+<script src="js/sidebar.js"></script>
+<script src="js/profil.js"></script>
+</body>
+</html>
