@@ -872,13 +872,12 @@ function toggleSidebar() {
     }
 }
 
-// Initialisation principale
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('🚀 Initialisation de la page patients...');
 
     // 1. Charger la sidebar
     try {
-        const response = await fetch('partials/sidebar.html');
+        const response = await fetch('/partials/sidebar.html');
         const sidebarHTML = await response.text();
         document.getElementById('sidebar-container').innerHTML = sidebarHTML;
         console.log('✅ Sidebar chargée');
@@ -906,27 +905,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             closeSidebarBtn.classList.remove('hidden');
 
             console.log('✅ Toggle sidebar configuré');
-        }
-
-        // Configurer le dropdown documents
-        const documentsDropdown = document.getElementById('documentsDropdown');
-        const documentsSubmenu = document.getElementById('documentsSubmenu');
-        const dropdownArrow = document.getElementById('dropdownArrow');
-
-        if (documentsDropdown && documentsSubmenu && dropdownArrow) {
-            documentsDropdown.addEventListener('click', function (e) {
-                e.preventDefault();
-                documentsSubmenu.classList.toggle('show');
-
-                if (documentsSubmenu.classList.contains('show')) {
-                    dropdownArrow.classList.remove('ri-arrow-down-s-line');
-                    dropdownArrow.classList.add('ri-arrow-up-s-line');
-                } else {
-                    dropdownArrow.classList.remove('ri-arrow-up-s-line');
-                    dropdownArrow.classList.add('ri-arrow-down-s-line');
-                }
-            });
-            console.log('✅ Dropdown documents configuré');
         }
     }, 200);
 

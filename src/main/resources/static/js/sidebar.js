@@ -65,7 +65,7 @@ function renderDefaultSidebar() {
                         </a>
                     </li>
                     <li class="mb-1">
-                        <a href="/rendezvous/page" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                        <a href="/rendezvous.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
                             <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
                                 <i class="ri-calendar-2-line"></i>
                             </div>

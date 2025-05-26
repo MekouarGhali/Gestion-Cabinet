@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Gestion des Rendez-vous</title>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#5b67e0',secondary:'#e0e7ff'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <style> :where([class^="ri-"])::before { content: "\f3c2"; } </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/rendezvous.css">
+  <script src="js/theme.js"></script>
+</head>
+<body>
+<div class="flex h-screen overflow-hidden">
+  <!-- Sidebar Navigation -->
+  <div id="sidebar-container"></div>
+
+  <!-- Main Content -->
+  <main id="mainContent" class="flex-1 flex flex-col overflow-hidden ml-64">
+    <!-- Top Header -->
+    <header class="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+      <div class="flex items-center">
+        <button id="openSidebarBtn" class="burger-btn text-gray-600 mr-6">
+          <i class="ri-menu-line text-xl"></i>
+        </button>
+        <h2 class="text-xl font-semibold text-gray-800">Agenda</h2>
+        <div class="ml-6 text-sm text-gray-500" id="currentDate">
+          <!-- Current date will be inserted by JS -->
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="addAppointmentBtn" class="bg-primary text-white px-4 py-2 rounded-button flex items-center whitespace-nowrap">
+          <div class="w-5 h-5 flex items-center justify-center mr-2">
+            <i class="ri-add-line"></i>
+          </div>
+          <span>Ajouter un rendez-vous</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Week Navigation -->
+    <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between week-navigation">
+      <div class="flex items-center space-x-4">
+        <button id="prevWeekBtn" class="p-2 rounded-full hover:bg-gray-100">
+          <div class="w-5 h-5 flex items-center justify-center text-gray-500">
+            <i class="ri-arrow-left-s-line"></i>
+          </div>
+        </button>
+        <h3 class="text-md font-medium" id="weekRange"><!-- Week range will be inserted by JS --></h3>
+        <button id="nextWeekBtn" class="p-2 rounded-full hover:bg-gray-100">
+          <div class="w-5 h-5 flex items-center justify-center text-gray-500">
+            <i class="ri-arrow-right-s-line"></i>
+          </div>
+        </button>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="todayBtn" class="px-3 py-1 text-sm rounded-button bg-primary text-white whitespace-nowrap">Aujourd'hui</button>
+      </div>
+    </div>
+
+    <!-- Calendar View -->
+    <div class="flex-1 overflow-auto">
+      <div class="calendar-grid">
+        <!-- Time column -->
+        <div class="time-column bg-white border-r border-gray-200 flex-shrink-0">
+          <div class="h-16 border-b border-gray-200"></div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">08:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">09:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">10:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">11:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">12:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">13:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">14:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">15:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">16:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">17:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">18:00</div>
+          <div class="time-slot flex items-start justify-center pt-1 text-xs text-gray-500">19:00</div>
+        </div>
+        <!-- Days columns -->
+        <div class="days-container" id="weekDays">
+          <!-- Days will be generated dynamically -->
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Appointment Details Modal -->
+<div id="appointmentDetailsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Détails du Rendez-vous</h3>
+      <button id="closeDetailsBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto">
+      <div class="mb-6">
+        <div class="flex items-center mb-2">
+          <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-500">
+            <i class="ri-user-line"></i>
+          </div>
+          <h4 class="font-medium text-gray-700">Patient</h4>
+        </div>
+        <p class="text-gray-800 ml-7" id="detailPatientName">-</p>
+      </div>
+      <div class="mb-6">
+        <div class="flex items-center mb-2">
+          <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-500">
+            <i class="ri-file-list-line"></i>
+          </div>
+          <h4 class="font-medium text-gray-700">Type de rendez-vous</h4>
+        </div>
+        <p class="text-gray-800 ml-7" id="detailAppointmentType">-</p>
+      </div>
+      <div class="mb-6">
+        <div class="flex items-center mb-2">
+          <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-500">
+            <i class="ri-heart-pulse-line"></i>
+          </div>
+          <h4 class="font-medium text-gray-700">Pathologie</h4>
+        </div>
+        <p class="text-gray-800 ml-7" id="detailPathologie">-</p>
+      </div>
+      <div class="mb-6">
+        <div class="flex items-center mb-2">
+          <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-500">
+            <i class="ri-time-line"></i>
+          </div>
+          <h4 class="font-medium text-gray-700">Horaire</h4>
+        </div>
+        <p class="text-gray-800 ml-7" id="detailTime">-</p>
+      </div>
+      <div class="mb-6">
+        <div class="flex items-center mb-2">
+          <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-500">
+            <i class="ri-calendar-line"></i>
+          </div>
+          <h4 class="font-medium text-gray-700">Date</h4>
+        </div>
+        <p class="text-gray-800 ml-7" id="detailDate">-</p>
+      </div>
+      <div class="mb-6">
+        <div class="flex items-center mb-2">
+          <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-500">
+            <i class="ri-calendar-check-line"></i>
+          </div>
+          <h4 class="font-medium text-gray-700">Séances restantes</h4>
+        </div>
+        <p class="text-gray-800 ml-7" id="detailSeancesRestantes">-</p>
+      </div>
+      <div class="mb-6">
+        <div class="flex items-center mb-2">
+          <div class="w-5 h-5 flex items-center justify-center mr-2 text-gray-500">
+            <i class="ri-file-text-line"></i>
+          </div>
+          <h4 class="font-medium text-gray-700">Notes</h4>
+        </div>
+        <p class="text-gray-800 ml-7" id="detailNotes">-</p>
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+      <button id="deleteAppointmentBtn" class="px-4 py-2 border border-red-300 text-red-600 rounded-button hover:bg-red-50 whitespace-nowrap">
+        Supprimer
+      </button>
+      <div class="flex space-x-3">
+        <button id="editAppointmentBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+          Modifier
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Appointment Modal -->
+<div id="addAppointmentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Ajouter un rendez-vous</h3>
+      <button id="closeAddBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto">
+      <form id="addAppointmentForm">
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="addDate" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+            <input type="date" id="addDate" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+          </div>
+          <div>
+            <label for="addAppointmentType" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select id="addAppointmentType" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              <option value="SEANCE">Séance</option>
+              <option value="ANAMNESE">Anamnèse</option>
+              <option value="COMPTE_RENDU">Compte Rendu</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+          <div class="patient-search-container">
+            <input type="text" id="addPatientSearch" class="patient-search-input" placeholder="Rechercher un patient...">
+            <div class="patient-search-options" id="addPatientOptions">
+              <!-- Options will be populated by JS -->
+            </div>
+            <input type="hidden" id="addPatient" name="patient">
+            <span class="patient-search-clear" id="addPatientClear"><i class="ri-close-line"></i></span>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="addStartTime" class="block text-sm font-medium text-gray-700 mb-1">Heure de début</label>
+            <select id="addStartTime" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              <!-- Time options will be populated by JS -->
+            </select>
+          </div>
+          <div>
+            <label for="addEndTime" class="block text-sm font-medium text-gray-700 mb-1">Heure de fin</label>
+            <select id="addEndTime" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              <!-- Time options will be populated by JS -->
+            </select>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="addPathologie" class="block text-sm font-medium text-gray-700 mb-1">Pathologie</label>
+          <input type="text" id="addPathologie" class="w-full px-3 py-2 border border-gray-300 rounded-button disabled-input" readonly>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Séances restantes</label>
+          <div class="flex items-end gap-2">
+            <div class="w-full">
+              <input type="number" id="addSeancesRestantes" class="w-full px-3 py-2 border border-gray-300 rounded-button disabled-input" readonly>
+            </div>
+            <button type="button" id="addMoreSeancesBtn" class="add-seance-btn">
+              <i class="ri-add-line"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="addNotes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea id="addNotes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+        </div>
+        <div class="mb-4 flex items-center">
+          <div id="addRecurring" class="custom-checkbox mr-2"></div>
+          <label for="addRecurring" class="text-sm text-gray-700">Rendez-vous récurrent (toutes les semaines)</label>
+        </div>
+      </form>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+      <button id="cancelAddBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+        Annuler
+      </button>
+      <button id="submitAddBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+        Ajouter
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Appointment Modal -->
+<div id="editAppointmentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Modifier le rendez-vous</h3>
+      <button id="closeEditBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto">
+      <form id="editAppointmentForm">
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="editDate" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+            <input type="date" id="editDate" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+          </div>
+          <div>
+            <label for="editAppointmentType" class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select id="editAppointmentType" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              <option value="SEANCE">Séance</option>
+              <option value="ANAMNESE">Anamnèse</option>
+              <option value="COMPTE_RENDU">Compte Rendu</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+          <div class="patient-search-container">
+            <input type="text" id="editPatientSearch" class="patient-search-input" placeholder="Rechercher un patient...">
+            <div class="patient-search-options" id="editPatientOptions">
+              <!-- Options will be populated by JS -->
+            </div>
+            <input type="hidden" id="editPatient" name="patient">
+            <span class="patient-search-clear" id="editPatientClear"><i class="ri-close-line"></i></span>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="editStartTime" class="block text-sm font-medium text-gray-700 mb-1">Heure de début</label>
+            <select id="editStartTime" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              <!-- Time options will be populated by JS -->
+            </select>
+          </div>
+          <div>
+            <label for="editEndTime" class="block text-sm font-medium text-gray-700 mb-1">Heure de fin</label>
+            <select id="editEndTime" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+              <!-- Time options will be populated by JS -->
+            </select>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="editPathologie" class="block text-sm font-medium text-gray-700 mb-1">Pathologie</label>
+          <input type="text" id="editPathologie" class="w-full px-3 py-2 border border-gray-300 rounded-button disabled-input" readonly>
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Séances restantes</label>
+          <div class="flex items-end gap-2">
+            <div class="w-full">
+              <input type="number" id="editSeancesRestantes" class="w-full px-3 py-2 border border-gray-300 rounded-button disabled-input" readonly>
+            </div>
+            <button type="button" id="editMoreSeancesBtn" class="add-seance-btn">
+              <i class="ri-add-line"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mb-4">
+          <label for="editNotes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <textarea id="editNotes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+        </div>
+        <div class="mb-4 flex items-center">
+          <div id="editRecurring" class="custom-checkbox mr-2"></div>
+          <label for="editRecurring" class="text-sm text-gray-700">Rendez-vous récurrent (toutes les semaines)</label>
+        </div>
+        <input type="hidden" id="editAppointmentId">
+      </form>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+      <button id="cancelEditBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+        Annuler
+      </button>
+      <button id="submitEditBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+        Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Sessions Modal -->
+<div id="addSessionsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Ajouter des séances</h3>
+      <button id="closeAddSessionsBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto max-h-[70vh]">
+      <form id="addSessionsForm">
+        <div class="mb-4">
+          <label class="text-xs text-gray-500">Séances totales actuelles</label>
+          <input type="number" id="currentSessionsDisplay" class="w-full px-3 py-2 border border-gray-300 rounded-button disabled-input mb-2" readonly>
+        </div>
+        <div class="mb-4">
+          <label for="additionalSessions" class="block text-sm font-medium text-gray-700 mb-1">Nombre de séances à ajouter au total</label>
+          <input type="number" id="additionalSessions" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" min="1" value="1">
+        </div>
+        <div class="mb-4">
+          <label class="text-xs text-gray-500">Nouveau total de séances</label>
+          <input type="number" id="totalSessionsDisplay" class="w-full px-3 py-2 border border-gray-300 rounded-button disabled-input mt-2" readonly>
+        </div>
+      </form>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+      <button id="cancelAddSessionsBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+        Annuler
+      </button>
+      <button id="submitAddSessionsBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+        Confirmer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="p-6">
+      <div class="flex items-center justify-center mb-4">
+        <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+          <i class="ri-error-warning-line ri-xl"></i>
+        </div>
+      </div>
+      <h3 class="text-lg font-medium text-center mb-2">Confirmer la suppression</h3>
+      <p class="text-gray-600 text-center mb-6">Êtes-vous sûr de vouloir supprimer ce rendez-vous ? Cette action est irréversible.</p>
+      <div class="flex justify-center space-x-4">
+        <button id="cancelDeleteBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+          Annuler
+        </button>
+        <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded-button hover:bg-red-700 whitespace-nowrap">
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Notification -->
+<div id="notification" class="notification">
+  <div class="notification-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+    </svg>
+  </div>
+  <div class="notification-content">
+    <div class="notification-title" id="notificationTitle">Succès</div>
+    <div class="notification-message" id="notificationMessage">Opération réussie !</div>
+  </div>
+  <div class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</div>
+</div>
+
+<script src="js/sidebar.js"></script>
+<script src="js/rendezvous.js"></script>
+</body>
+</html>

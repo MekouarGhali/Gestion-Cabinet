@@ -1,5 +1,6 @@
 package com.example.gestion_de_cabinet_medical.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,6 +11,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // ✅ AJOUT ICI
 public class Patient {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,8 +24,8 @@ public class Patient {
     private String pathologie;
     private LocalDate dateNaissance;
 
-    private int seancesPrevues;
-    private int seancesEffectuees;
+    private Integer seancesPrevues;
+    private Integer seancesEffectuees;
 
     private String statut; // Nouveau / Actif / Inactif
     private String avatar; // Initiales
