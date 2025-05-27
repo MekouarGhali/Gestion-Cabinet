@@ -22,7 +22,7 @@ public class RendezVous {
     // ✅ SEULE RELATION : @ManyToOne (obligatoire)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnoreProperties({"factures", "rendezVous", "hibernateLazyInitializer", "handler"})
     private Patient patient;
 
     @Column(nullable = false)

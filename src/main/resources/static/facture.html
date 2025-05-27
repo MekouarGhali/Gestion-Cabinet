@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Factures</title>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#5b67e0',secondary:'#e0e7ff'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <style> :where([class^="ri-"])::before { content: "\f3c2"; } </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/facture.css">
+  <script src="js/theme.js"></script>
+</head>
+<body>
+<div class="flex h-screen overflow-hidden">
+  <!-- Sidebar Navigation -->
+  <div id="sidebar-container"></div>
+
+  <!-- Main Content -->
+  <main id="mainContent" class="flex-1 flex flex-col overflow-hidden ml-64">
+    <!-- Top Header -->
+    <header class="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+      <div class="flex items-center">
+        <button id="openSidebarBtn" class="burger-btn text-gray-600 mr-6">
+          <i class="ri-menu-line text-xl"></i>
+        </button>
+        <h2 class="text-xl font-semibold text-gray-800">Factures</h2>
+        <div class="ml-6 text-sm text-gray-500" id="currentDate">
+          <!-- Current date will be inserted by JS -->
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="newFactureBtn" class="bg-primary text-white px-4 py-2 rounded-button flex items-center whitespace-nowrap">
+          <div class="w-5 h-5 flex items-center justify-center mr-2">
+            <i class="ri-add-line"></i>
+          </div>
+          <span>Nouvelle Facture</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Facture Content -->
+    <div class="flex-1 overflow-auto p-6 bg-gray-50">
+      <!-- Formulaire de création -->
+      <div class="bg-white rounded-lg shadow-sm p-6 mb-6" id="formSection">
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">Nouvelle Facture</h3>
+          <button id="closeFormBtn" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <i class="ri-close-line text-xl"></i>
+          </button>
+        </div>
+
+        <form id="factureForm">
+          <!-- Informations principales -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label for="numFacture" class="block text-sm font-medium text-gray-700 mb-1">N° Facture</label>
+              <div class="flex items-center">
+                <input type="text" id="numFacture" name="numFacture" class="flex-1 px-3 py-2 border border-gray-300 rounded-button bg-gray-100" readonly>
+                <button type="button" id="toggleNumFacture" class="ml-2 text-gray-500 hover:text-primary">
+                  <i id="numFactureLock" class="ri-lock-line"></i>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label for="patientSearch" class="block text-sm font-medium text-gray-700 mb-1">Patient *</label>
+              <div class="patient-search-container">
+                <input type="text" id="patientSearch" class="patient-search-input" placeholder="Rechercher un patient...">
+                <div class="patient-search-options" id="patientOptions"></div>
+                <input type="hidden" id="selectedPatient" name="patient">
+                <span class="patient-search-clear" id="patientClear"><i class="ri-close-line"></i></span>
+              </div>
+            </div>
+
+            <div>
+              <label for="dateFacture" class="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+              <input type="date" id="dateFacture" name="dateFacture" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+            </div>
+
+            <div>
+              <label for="modePaiement" class="block text-sm font-medium text-gray-700 mb-1">Mode de paiement *</label>
+              <select id="modePaiement" name="modePaiement" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+                <option value="">Sélectionner...</option>
+                <option value="espèce">Espèce</option>
+                <option value="carte bancaire">Carte bancaire</option>
+                <option value="chèque">Chèque</option>
+                <option value="virement">Virement</option>
+              </select>
+            </div>
+
+            <div class="md:col-span-2">
+              <label for="mutuelle" class="block text-sm font-medium text-gray-700 mb-1">Mutuelle *</label>
+              <div class="flex space-x-4">
+                <label class="flex items-center">
+                  <input type="radio" name="mutuelle" value="oui" class="mr-2">
+                  <span>Oui</span>
+                </label>
+                <label class="flex items-center">
+                  <input type="radio" name="mutuelle" value="non" class="mr-2" checked>
+                  <span>Non</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Prestations -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Prestations *</label>
+
+            <div class="overflow-x-auto mb-3">
+              <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Désignation</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Qté</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Prix (DH)</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Total (DH)</th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+                </thead>
+                <tbody id="prestationsTable">
+                <!-- Prestations ajoutées dynamiquement -->
+                </tbody>
+              </table>
+            </div>
+
+            <button type="button" id="addPrestationBtn" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center text-sm">
+              <i class="ri-add-line mr-1"></i> Ajouter une prestation
+            </button>
+          </div>
+
+          <!-- Informations du cabinet -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div>
+              <label for="adresse" class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+              <div class="flex items-center">
+                <input type="text" id="adresse" name="adresse" value="Centre Multi-dys, Lot Perla N° 138, Bouskoura" class="flex-1 px-3 py-2 border border-gray-300 rounded-button bg-gray-100" readonly>
+                <button type="button" id="toggleAdresse" class="ml-2 text-gray-500 hover:text-primary">
+                  <i id="adresseLock" class="ri-lock-line"></i>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label for="gsm" class="block text-sm font-medium text-gray-700 mb-1">GSM</label>
+              <div class="flex items-center">
+                <input type="text" id="gsm" name="gsm" value="06 49 60 26 47" class="flex-1 px-3 py-2 border border-gray-300 rounded-button bg-gray-100" readonly>
+                <button type="button" id="toggleGsm" class="ml-2 text-gray-500 hover:text-primary">
+                  <i id="gsmLock" class="ri-lock-line"></i>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label for="ice" class="block text-sm font-medium text-gray-700 mb-1">ICE</label>
+              <div class="flex items-center">
+                <input type="text" id="ice" name="ice" value="003663065000094" class="flex-1 px-3 py-2 border border-gray-300 rounded-button bg-gray-100" readonly>
+                <button type="button" id="toggleIce" class="ml-2 text-gray-500 hover:text-primary">
+                  <i id="iceLock" class="ri-lock-line"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Boutons d'action -->
+          <div class="flex justify-between">
+            <button type="button" id="previewBtn" class="px-4 py-2 bg-secondary text-primary rounded-button hover:bg-secondary/90">
+              <i class="ri-eye-line mr-2"></i> Aperçu de la facture
+            </button>
+            <div>
+              <button type="button" id="saveBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90">
+                <i class="ri-save-line mr-2"></i> Enregistrer
+              </button>
+              <button type="button" id="printBtn" class="px-4 py-2 bg-gray-700 text-white rounded-button hover:bg-gray-800 ml-2">
+                <i class="ri-printer-line mr-2"></i> Imprimer
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Aperçu de la facture -->
+      <div id="facturePreview" class="facture-preview bg-white mb-6">
+        <button id="closePreviewBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
+          <i class="ri-close-line text-xl"></i>
+        </button>
+
+        <div id="printableArea" class="printed-facture">
+          <div class="mb-6">
+            <img src="images/Multi-Dys.jpg" style="max-width: 150px; height: auto; margin-bottom: 10px;" alt="Logo Centre Multi-Dys">
+            <h1 class="text-xl font-bold text-center">FACTURE <span id="preview-numFacture">001</span></h1>
+          </div>
+
+          <div class="mb-6">
+            <p class="font-bold">Nom : <span id="preview-nomPatient">-</span></p>
+          </div>
+
+          <div class="mb-6">
+            <p class="font-bold mb-2">Description des prestations :</p>
+            <table class="w-full border-collapse">
+              <thead>
+              <tr>
+                <th class="border border-gray-300 p-2 text-left font-bold">Désignation</th>
+                <th class="border border-gray-300 p-2 text-center font-bold">Quantité</th>
+                <th class="border border-gray-300 p-2 text-center font-bold">Prix</th>
+                <th class="border border-gray-300 p-2 text-center font-bold">Total</th>
+              </tr>
+              </thead>
+              <tbody id="preview-prestations">
+              <!-- Prestations dynamiques -->
+              </tbody>
+              <tfoot>
+              <tr>
+                <td colspan="3" class="border border-gray-300 p-2 text-right font-bold">Total</td>
+                <td class="border border-gray-300 p-2 text-center font-bold" id="preview-total">0 Dhs</td>
+              </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="mb-6">
+            <p><strong>Mode de paiement :</strong> <span id="preview-modePaiement">-</span></p>
+          </div>
+
+          <div class="mb-6 flex justify-end">
+            <p><strong>Fait le :</strong> <span id="preview-dateFacture">-</span></p>
+          </div>
+
+          <div class="text-center mt-8">
+            <p><strong>Adresse :</strong> <span id="preview-adresse">-</span></p>
+            <p><strong>GSM :</strong> <span id="preview-gsm">-</span></p>
+            <p><strong>ICE :</strong> <span id="preview-ice">-</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters and Search Section -->
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-100">
+        <div class="flex flex-wrap justify-between items-center">
+          <!-- Filtres à gauche -->
+          <div class="flex space-x-4 mb-2 sm:mb-0">
+            <button class="filter-button active px-4 py-2 rounded-full text-sm mr-2 whitespace-nowrap" data-filter="all">Toutes</button>
+            <button class="filter-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm mr-2 whitespace-nowrap" data-filter="espèce">Espèces</button>
+            <button class="filter-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm mr-2 whitespace-nowrap" data-filter="carte bancaire">Carte</button>
+            <button class="filter-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm mr-2 whitespace-nowrap" data-filter="chèque">Chèque</button>
+            <button class="filter-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="virement">Virement</button>
+          </div>
+
+          <!-- Section recherche et filtres avancés à droite -->
+          <div class="flex items-center space-x-4">
+            <!-- Bouton filtres avancés -->
+            <div class="relative">
+              <button id="advancedFiltersBtn" class="flex items-center px-3 py-2 border border-gray-300 rounded-button text-sm text-gray-700 bg-white hover:bg-gray-50">
+                <i class="ri-filter-3-line mr-2"></i>
+                <span>Filtres</span>
+                <i class="ri-arrow-down-s-line ml-1"></i>
+              </button>
+
+              <!-- Dropdown des filtres avancés -->
+              <div id="advancedFiltersDropdown" class="absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-20 hidden">
+                <div class="p-4">
+                  <h3 class="text-sm font-medium text-gray-900 mb-3">Filtres avancés</h3>
+
+                  <!-- Filtre par période -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-700 mb-2">Période</label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <input type="date" id="dateDebut" class="px-2 py-1 border border-gray-300 rounded text-xs">
+                      <input type="date" id="dateFin" class="px-2 py-1 border border-gray-300 rounded text-xs">
+                    </div>
+                  </div>
+
+                  <!-- Filtre par montant -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-700 mb-2">Montant (DH)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <input type="number" id="montantMin" placeholder="Min" class="px-2 py-1 border border-gray-300 rounded text-xs">
+                      <input type="number" id="montantMax" placeholder="Max" class="px-2 py-1 border border-gray-300 rounded text-xs">
+                    </div>
+                  </div>
+
+                  <!-- Filtre par mutuelle -->
+                  <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-700 mb-2">Mutuelle</label>
+                    <select id="mutuelleFilter" class="w-full px-2 py-1 border border-gray-300 rounded text-xs">
+                      <option value="">Toutes</option>
+                      <option value="oui">Avec mutuelle</option>
+                      <option value="non">Sans mutuelle</option>
+                    </select>
+                  </div>
+
+                  <!-- Boutons d'action -->
+                  <div class="flex justify-between pt-3 border-t border-gray-200">
+                    <button id="clearFiltersBtn" class="px-3 py-1 text-xs text-gray-600 hover:text-gray-800">
+                      Effacer
+                    </button>
+                    <button id="applyFiltersBtn" class="px-3 py-1 bg-primary text-white rounded text-xs hover:bg-primary/90">
+                      Appliquer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Barre de recherche -->
+            <div class="relative">
+              <input type="text" id="searchInput" placeholder="Rechercher..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm">
+              <div class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-500">
+                <i class="ri-search-line"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Liste des factures -->
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Historique des factures</h3>
+          <div class="text-sm text-gray-500">
+            <span id="facturesTotalCount">0</span> facture(s) trouvée(s)
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">N° Facture</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Patient</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mode Paiement</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mutuelle</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="facturesTableBody">
+            <!-- Les factures seront ajoutées dynamiquement ici -->
+            </tbody>
+          </table>
+        </div>
+
+        <div id="noFactures" class="text-center py-8 text-gray-500 hidden">
+          Aucune facture trouvée.
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-4 flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Affichage de <span id="startRange">1</span> à <span id="endRange">10</span> sur <span id="totalFactures">0</span> factures
+          </div>
+          <div class="flex space-x-2" id="paginationContainer">
+            <!-- Pagination sera générée ici -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div id="deleteConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="p-6">
+      <div class="flex items-center justify-center mb-4">
+        <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+          <i class="ri-error-warning-line ri-xl"></i>
+        </div>
+      </div>
+      <h3 class="text-lg font-medium text-center mb-2">Confirmer la suppression</h3>
+      <p class="text-gray-600 text-center mb-6">Êtes-vous sûr de vouloir supprimer cette facture ? Cette action est irréversible.</p>
+      <div class="flex justify-center space-x-4">
+        <button id="cancelDeleteBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50">
+          Annuler
+        </button>
+        <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded-button hover:bg-red-700">
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Notification -->
+<div id="notification" class="notification">
+  <div class="notification-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+    </svg>
+  </div>
+  <div class="notification-content">
+    <div class="notification-title" id="notificationTitle">Succès</div>
+    <div class="notification-message" id="notificationMessage">Opération réussie !</div>
+  </div>
+  <div class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</div>
+</div>
+
+<script src="js/sidebar.js"></script>
+<script src="js/facture.js"></script>
+</body>
+</html>
