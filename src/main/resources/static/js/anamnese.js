@@ -1,0 +1,2601 @@
+// Configuration API
+const API_BASE_URL = '/api';
+
+// Variables globales
+let allAnamneses = [];
+let filteredAnamneses = [];
+let allPatients = [];
+let currentFilter = 'all';
+let currentPage = 1;
+let itemsPerPage = 10;
+let selectedAnamnese = null;
+
+// Classes pour gérer les appels API
+class AnamneseAPI {
+    static async getAll() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses`);
+            if (!response.ok) throw new Error('Erreur lors du chargement des anamnèses');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API getAll:', error);
+            showNotification('error', 'Erreur lors du chargement des anamnèses');
+            return [];
+        }
+    }
+
+    static async getById(id) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses/${id}`);
+            if (!response.ok) throw new Error('Anamnèse introuvable');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API getById:', error);
+            return null;
+        }
+    }
+
+    static async create(anamneseData) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(anamneseData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erreur lors de la création');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API create:', error);
+            throw error;
+        }
+    }
+
+    static async update(id, anamneseData) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(anamneseData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Erreur lors de la mise à jour');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API update:', error);
+            throw error;
+        }
+    }
+
+    static async delete(id) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error('Erreur lors de la suppression');
+            return true;
+        } catch (error) {
+            console.error('Erreur API delete:', error);
+            throw error;
+        }
+    }
+
+    static async generateNumber() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses/generate-numero`);
+            if (!response.ok) throw new Error('Erreur lors de la génération du numéro');
+            const data = await response.json();
+            return data.numero;
+        } catch (error) {
+            console.error('Erreur API generateNumber:', error);
+            return `AN-${String(Date.now()).slice(-3)}`;
+        }
+    }
+
+    static async search(query) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses/search?q=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Erreur lors de la recherche');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API search:', error);
+            return [];
+        }
+    }
+
+    static async getByStatut(statut) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/anamneses/statut/${statut}`);
+            if (!response.ok) throw new Error('Erreur lors du filtrage');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API getByStatut:', error);
+            return [];
+        }
+    }
+}
+
+class PatientAPI {
+    static async getAll() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/patients`);
+            if (!response.ok) throw new Error('Erreur lors du chargement des patients');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API getAll patients:', error);
+            return [];
+        }
+    }
+
+    static async search(query) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/patients/search?q=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Erreur lors de la recherche');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API search patients:', error);
+            return [];
+        }
+    }
+}
+
+// Utilitaires
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR');
+}
+
+function formatDateForInput(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+}
+
+function getStatusClass(statut) {
+    switch(statut) {
+        case 'COMPLETE': return 'status-complete';
+        case 'EN_COURS': return 'status-progress';
+        case 'EN_ATTENTE': return 'status-pending';
+        default: return 'status-pending';
+    }
+}
+
+function getStatusLabel(statut) {
+    switch(statut) {
+        case 'COMPLETE': return 'Complète';
+        case 'EN_COURS': return 'En cours';
+        case 'EN_ATTENTE': return 'En attente';
+        default: return 'En attente';
+    }
+}
+
+// Gestion des anamnèses
+async function loadAnamneses() {
+    try {
+        allAnamneses = await AnamneseAPI.getAll();
+        await filterAnamneses();
+    } catch (error) {
+        console.error('Erreur lors du chargement:', error);
+        showNotification('error', 'Erreur lors du chargement des anamnèses');
+    }
+}
+
+async function filterAnamneses() {
+    try {
+        if (currentFilter === 'all') {
+            filteredAnamneses = [...allAnamneses];
+        } else {
+            filteredAnamneses = await AnamneseAPI.getByStatut(currentFilter);
+        }
+
+        const searchTerm = document.getElementById('searchInput')?.value.trim();
+        if (searchTerm) {
+            filteredAnamneses = await AnamneseAPI.search(searchTerm);
+            if (currentFilter !== 'all') {
+                filteredAnamneses = filteredAnamneses.filter(a => a.statut === currentFilter);
+            }
+        }
+
+        updateAnamnesesList();
+    } catch (error) {
+        console.error('Erreur lors du filtrage:', error);
+        showNotification('error', 'Erreur lors du filtrage');
+    }
+}
+
+function updateAnamnesesList() {
+    const totalEl = document.getElementById('totalAnamneses');
+    if (totalEl) totalEl.textContent = filteredAnamneses.length;
+
+    const totalPages = Math.ceil(filteredAnamneses.length / itemsPerPage);
+
+    if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+    }
+
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = Math.min(start + itemsPerPage, filteredAnamneses.length);
+
+    const startEl = document.getElementById('startRange');
+    const endEl = document.getElementById('endRange');
+
+    if (startEl) startEl.textContent = filteredAnamneses.length ? start + 1 : 0;
+    if (endEl) endEl.textContent = end;
+
+    const currentPageAnamneses = filteredAnamneses.slice(start, end);
+
+    renderTable(currentPageAnamneses);
+    createPagination(totalPages);
+}
+
+function renderTable(anamneses) {
+    const tableBody = document.getElementById('anamnesesTableBody');
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
+
+    if (anamneses.length === 0) {
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                Aucune anamnèse trouvée
+            </td>
+        `;
+        tableBody.appendChild(emptyRow);
+        return;
+    }
+
+    anamneses.forEach((anamnese) => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50';
+
+        const statusClass = getStatusClass(anamnese.statut);
+        const statusLabel = getStatusLabel(anamnese.statut);
+
+        row.innerHTML = `
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">${anamnese.numAnamnese || 'N/A'}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <div class="text-sm font-medium text-gray-900">${anamnese.nomPrenom || 'N/A'}</div>
+                <div class="text-xs text-gray-500">Né(e) le ${formatDate(anamnese.dateNaissance)}</div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                ${formatDate(anamnese.dateEntretien)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                ${anamnese.motifConsultation || 'N/A'}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="status-badge ${statusClass}">
+                    ${statusLabel}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <div class="flex justify-end space-x-2">
+                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-blue-500 view-anamnese-btn" data-id="${anamnese.id}">
+                        <i class="ri-eye-line"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 edit-anamnese-btn" data-id="${anamnese.id}">
+                        <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-red-500 delete-anamnese-btn" data-id="${anamnese.id}">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+
+    addButtonEventListeners();
+}
+
+function createPagination(totalPages) {
+    const paginationContainer = document.getElementById('paginationContainer');
+    if (!paginationContainer) return;
+
+    paginationContainer.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    const prevBtn = document.createElement('button');
+    prevBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm text-gray-700 bg-white ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`;
+    prevBtn.innerHTML = 'Précédent';
+    prevBtn.disabled = currentPage === 1;
+
+    if (currentPage > 1) {
+        prevBtn.addEventListener('click', () => {
+            currentPage--;
+            updateAnamnesesList();
+        });
+    }
+
+    paginationContainer.appendChild(prevBtn);
+
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm ${i === currentPage ? 'bg-primary text-white' : 'text-gray-700 bg-white hover:bg-gray-50'}`;
+        pageBtn.textContent = i;
+
+        if (i !== currentPage) {
+            pageBtn.addEventListener('click', () => {
+                currentPage = i;
+                updateAnamnesesList();
+            });
+        }
+
+        paginationContainer.appendChild(pageBtn);
+    }
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = `px-3 py-1 border border-gray-300 rounded-button text-sm text-gray-700 bg-white ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`;
+    nextBtn.innerHTML = 'Suivant';
+    nextBtn.disabled = currentPage === totalPages;
+
+    if (currentPage < totalPages) {
+        nextBtn.addEventListener('click', () => {
+            currentPage++;
+            updateAnamnesesList();
+        });
+    }
+
+    paginationContainer.appendChild(nextBtn);
+}
+
+function addButtonEventListeners() {
+    document.querySelectorAll('.view-anamnese-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const anamneseId = this.dataset.id;
+            const anamnese = await AnamneseAPI.getById(anamneseId);
+            if (anamnese) {
+                selectedAnamnese = anamnese;
+                openViewModal(anamnese);
+            }
+        });
+    });
+
+    document.querySelectorAll('.edit-anamnese-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const anamneseId = this.dataset.id;
+            const anamnese = await AnamneseAPI.getById(anamneseId);
+            if (anamnese) {
+                selectedAnamnese = anamnese;
+                openEditModal(anamnese);
+            }
+        });
+    });
+
+    document.querySelectorAll('.delete-anamnese-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const anamneseId = this.dataset.id;
+            const anamnese = await AnamneseAPI.getById(anamneseId);
+            if (anamnese) {
+                selectedAnamnese = anamnese;
+                const modal = document.getElementById('deleteConfirmModal');
+                if (modal) modal.classList.remove('hidden');
+            }
+        });
+    });
+}
+
+// Gestion des patients (recherche)
+async function loadPatients() {
+    try {
+        allPatients = await PatientAPI.getAll();
+    } catch (error) {
+        console.error('Erreur lors du chargement des patients:', error);
+    }
+}
+
+function initPatientSearch(searchInputId, optionsContainerId, hiddenInputId, clearBtnId, nomPrenomInputId = null) {
+    const searchInput = document.getElementById(searchInputId);
+    const optionsContainer = document.getElementById(optionsContainerId);
+    const hiddenInput = document.getElementById(hiddenInputId);
+    const clearBtn = document.getElementById(clearBtnId);
+    const nomPrenomInput = nomPrenomInputId ? document.getElementById(nomPrenomInputId) : null;
+
+    if (!searchInput || !optionsContainer || !hiddenInput || !clearBtn) return;
+
+    searchInput.addEventListener('focus', function() {
+        optionsContainer.style.display = 'block';
+        filterPatients(searchInputId, optionsContainerId);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !optionsContainer.contains(e.target)) {
+            optionsContainer.style.display = 'none';
+        }
+    });
+
+    searchInput.addEventListener('input', function() {
+        filterPatients(searchInputId, optionsContainerId);
+        if (searchInput.value.trim() !== '') {
+            clearBtn.style.display = 'block';
+        } else {
+            clearBtn.style.display = 'none';
+        }
+    });
+
+    clearBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        searchInput.value = '';
+        hiddenInput.value = '';
+        clearBtn.style.display = 'none';
+
+        if (nomPrenomInput) {
+            nomPrenomInput.value = '';
+        }
+
+        // ✅ NOUVEAU : Effacer aussi la date de naissance lors du clear
+        clearPatientData(searchInputId);
+
+        filterPatients(searchInputId, optionsContainerId);
+    });
+
+    optionsContainer.addEventListener('click', function(e) {
+        const option = e.target.closest('.patient-search-option');
+        if (option) {
+            const patientId = option.dataset.patientId;
+            const patient = allPatients.find(p => p.id == patientId);
+
+            if (patient) {
+                searchInput.value = `${patient.prenom} ${patient.nom}`;
+                hiddenInput.value = patientId;
+                optionsContainer.style.display = 'none';
+                clearBtn.style.display = 'block';
+
+                if (nomPrenomInput) {
+                    nomPrenomInput.value = `${patient.prenom} ${patient.nom}`;
+                }
+
+                // ✅ NOUVEAU : Auto-remplir les données du patient
+                fillPatientData(searchInputId, patient);
+
+                const event = new Event('change');
+                hiddenInput.dispatchEvent(event);
+            }
+        }
+    });
+}
+
+function fillPatientData(searchInputId, patient) {
+    console.log('🔄 Auto-remplissage des données patient:', patient);
+
+    // Déterminer le préfixe selon le formulaire
+    let prefix = '';
+    if (searchInputId.includes('edit')) {
+        prefix = 'edit';
+    }
+
+    // Fonction utilitaire pour obtenir l'ID des champs
+    const getFieldId = (fieldName) => {
+        if (prefix) {
+            return `${prefix}${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`;
+        }
+        return fieldName;
+    };
+
+    // ✅ 1. Remplir automatiquement le nom/prénom si le champ existe
+    const nomPrenomField = document.getElementById(getFieldId('nomPrenom'));
+    if (nomPrenomField && nomPrenomField.value.trim() === '') {
+        nomPrenomField.value = `${patient.prenom} ${patient.nom}`;
+        console.log('✅ Nom/Prénom rempli automatiquement');
+    }
+
+    // ✅ 2. Remplir automatiquement la date de naissance
+    const dateNaissanceField = document.getElementById(getFieldId('dateNaissance'));
+    if (dateNaissanceField && patient.dateNaissance) {
+        dateNaissanceField.value = formatDateForInput(patient.dateNaissance);
+        console.log('✅ Date de naissance remplie automatiquement:', patient.dateNaissance);
+
+        // Supprimer l'erreur de validation si elle existait
+        dateNaissanceField.classList.remove('border-red-500');
+    }
+
+    showNotification('info', `Données du patient ${patient.prenom} ${patient.nom} chargées automatiquement`);
+}
+
+function clearPatientData(searchInputId) {
+    console.log('🗑️ Effacement des données patient');
+
+    // Déterminer le préfixe selon le formulaire
+    let prefix = '';
+    if (searchInputId.includes('edit')) {
+        prefix = 'edit';
+    }
+
+    // Fonction utilitaire pour obtenir l'ID des champs
+    const getFieldId = (fieldName) => {
+        if (prefix) {
+            return `${prefix}${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}`;
+        }
+        return fieldName;
+    };
+
+    // Effacer les champs auto-remplis
+    const fieldsToMandatoryClear = ['nomPrenom', 'dateNaissance'];
+
+    fieldsToMandatoryClear.forEach(fieldName => {
+        const field = document.getElementById(getFieldId(fieldName));
+        if (field) {
+            field.value = '';
+            field.classList.remove('border-red-500'); // Supprimer les erreurs de validation
+            console.log(`✅ Champ ${fieldName} effacé`);
+        }
+    });
+}
+
+async function filterPatients(searchInputId, optionsContainerId) {
+    const searchInput = document.getElementById(searchInputId);
+    const optionsContainer = document.getElementById(optionsContainerId);
+
+    if (!searchInput || !optionsContainer) return;
+
+    const searchTerm = searchInput.value.toLowerCase();
+    optionsContainer.innerHTML = '';
+
+    let patientsToShow = [];
+
+    if (searchTerm.length >= 2) {
+        try {
+            patientsToShow = await PatientAPI.search(searchTerm);
+        } catch (error) {
+            console.error('Erreur lors de la recherche:', error);
+            patientsToShow = allPatients.filter(patient =>
+                patient.prenom.toLowerCase().includes(searchTerm) ||
+                patient.nom.toLowerCase().includes(searchTerm)
+            );
+        }
+    } else if (searchTerm.length === 0) {
+        patientsToShow = allPatients.slice(0, 10);
+    }
+
+    patientsToShow.forEach(patient => {
+        const option = document.createElement('div');
+        option.className = 'patient-search-option';
+        option.dataset.patientId = patient.id;
+
+        // ✅ AMÉLIORATION : Afficher plus d'informations pour aider à identifier le patient
+        const dateNaissance = patient.dateNaissance ? formatDate(patient.dateNaissance) : 'Date non renseignée';
+        const pathologie = patient.pathologie || 'Aucune pathologie';
+
+        option.innerHTML = `
+            <div class="font-medium">${patient.prenom} ${patient.nom}</div>
+            <div class="text-xs text-gray-500">
+                <div>Né(e) le ${dateNaissance}</div>
+                <div>${pathologie}</div>
+            </div>
+        `;
+        optionsContainer.appendChild(option);
+    });
+
+    if (patientsToShow.length === 0 && searchTerm.length >= 2) {
+        const noResult = document.createElement('div');
+        noResult.className = 'patient-search-option text-gray-500';
+        noResult.innerHTML = `
+            <div class="text-center py-2">
+                <div>Aucun patient trouvé</div>
+                <div class="text-xs">Essayez avec un nom ou prénom différent</div>
+            </div>
+        `;
+        optionsContainer.appendChild(noResult);
+    }
+}
+
+
+// Gestion des sections collapsibles
+function toggleSection(sectionName) {
+    const section = document.getElementById(`section-${sectionName}`);
+    const arrow = document.getElementById(`arrow-${sectionName}`);
+
+    if (section && arrow) {
+        const isHidden = section.classList.contains('hidden');
+
+        if (isHidden) {
+            section.classList.remove('hidden');
+            arrow.classList.remove('ri-arrow-down-s-line');
+            arrow.classList.add('ri-arrow-up-s-line');
+        } else {
+            section.classList.add('hidden');
+            arrow.classList.remove('ri-arrow-up-s-line');
+            arrow.classList.add('ri-arrow-down-s-line');
+        }
+    }
+}
+
+// ✅ MODIFICATION : Fonction getFormData mise à jour pour les radio buttons personnalisés
+function getCustomRadioValue(radioName, formPrefix = '') {
+    const name = formPrefix ? `${formPrefix}${radioName.charAt(0).toUpperCase()}${radioName.slice(1)}` : radioName;
+    const selectedRadio = document.querySelector(`.custom-radio[data-name="${name}"].checked`);
+
+    if (!selectedRadio) return null;
+
+    const value = selectedRadio.dataset.value;
+    return value === 'true' ? true : value === 'false' ? false : value;
+}
+
+// ✅ AJOUT : Fonction pour remplir les radio buttons lors de l'édition
+function setCustomRadioValue(radioName, value, formPrefix = '') {
+    const name = formPrefix ? `${formPrefix}${radioName.charAt(0).toUpperCase()}${radioName.slice(1)}` : radioName;
+
+    // Décocher tous les radio buttons de ce groupe
+    document.querySelectorAll(`.custom-radio[data-name="${name}"]`).forEach(radio => {
+        radio.classList.remove('checked');
+    });
+
+    // Cocher le bon radio button
+    if (value !== null && value !== undefined) {
+        const targetRadio = document.querySelector(`.custom-radio[data-name="${name}"][data-value="${value}"]`);
+        if (targetRadio) {
+            targetRadio.classList.add('checked');
+        }
+    }
+}
+
+// Données de formulaire
+function getFormData(formPrefix = '') {
+    const getFieldValue = (fieldName) => {
+        const fieldId = formPrefix ? `${formPrefix}${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}` : fieldName;
+        const field = document.getElementById(fieldId);
+        return field ? field.value.trim() : '';
+    };
+
+    const getRadioValue = (radioName) => {
+        return getCustomRadioValue(radioName, formPrefix);
+    };
+
+    const getSelectValue = (selectName) => {
+        const selectId = formPrefix ? `${formPrefix}${selectName.charAt(0).toUpperCase()}${selectName.slice(1)}` : selectName;
+        const select = document.getElementById(selectId);
+        return select ? select.value : '';
+    };
+
+    // Récupération des données de base
+    const patientIdValue = getFieldValue('patientId');
+    const patientId = patientIdValue ? parseInt(patientIdValue) : null;
+    const patient = patientId ? { id: patientId } : null;
+
+    // Construction des objets imbriqués
+    const buildParents = () => {
+        const nomPere = getFieldValue('nomPere');
+        const agePere = getFieldValue('agePere');
+        const professionPere = getFieldValue('professionPere');
+        const nomMere = getFieldValue('nomMere');
+        const ageMere = getFieldValue('ageMere');
+        const professionMere = getFieldValue('professionMere');
+
+        if (!nomPere && !agePere && !professionPere && !nomMere && !ageMere && !professionMere) {
+            return null;
+        }
+
+        return {
+            nomPere: nomPere || null,
+            agePere: agePere ? parseInt(agePere) : null,
+            professionPere: professionPere || null,
+            nomMere: nomMere || null,
+            ageMere: ageMere ? parseInt(ageMere) : null,
+            professionMere: professionMere || null
+        };
+    };
+
+    const buildGrossesse = () => {
+        const desire = getRadioValue('grossesseDesire');
+        const compliquee = getRadioValue('grossesseCompliquee');
+        const autres = getFieldValue('grossesseAutres');
+
+        if (desire === null && compliquee === null && !autres) {
+            return null;
+        }
+
+        return {
+            desire,
+            compliquee,
+            autres: autres || null
+        };
+    };
+
+    const buildAccouchement = () => {
+        const terme = getRadioValue('accouchementTerme');
+        const premature = getRadioValue('accouchementPremature');
+        const postMature = getRadioValue('accouchementPostMature');
+        const voieBasse = getRadioValue('accouchementVoieBasse');
+        const cesarienne = getRadioValue('accouchementCesarienne');
+        const cris = getRadioValue('accouchementCris');
+        const autres = getFieldValue('accouchementAutres');
+
+        if (terme === null && premature === null && postMature === null &&
+            voieBasse === null && cesarienne === null && cris === null && !autres) {
+            return null;
+        }
+
+        return {
+            terme,
+            premature,
+            postMature,
+            voieBasse,
+            cesarienne,
+            cris,
+            autres: autres || null
+        };
+    };
+
+    const buildAllaitement = () => {
+        const type = getRadioValue('allaitementType');
+        const dureeValue = getFieldValue('allaitementDuree');
+
+        if (!type && !dureeValue) {
+            return null;
+        }
+
+        return {
+            type: type || null,
+            duree: dureeValue ? parseInt(dureeValue) : null
+        };
+    };
+
+    const buildDeveloppement = () => {
+        const tenueTete = getFieldValue('tenueTete');
+        const positionAssise = getFieldValue('positionAssise');
+        const quatrePattes = getFieldValue('quatrePattes');
+        const positionDebout = getFieldValue('positionDebout');
+        const marche = getFieldValue('marche');
+
+        if (!tenueTete && !positionAssise && !quatrePattes && !positionDebout && !marche) {
+            return null;
+        }
+
+        return {
+            tenueTete: tenueTete || null,
+            positionAssise: positionAssise || null,
+            quatrePattes: quatrePattes || null,
+            positionDebout: positionDebout || null,
+            marche: marche || null
+        };
+    };
+
+    const buildLangage = () => {
+        const premierMot = getFieldValue('premierMot');
+        const premierePhrase = getFieldValue('premierePhrase');
+
+        if (!premierMot && !premierePhrase) {
+            return null;
+        }
+
+        return {
+            premierMot: premierMot || null,
+            premierePhrase: premierePhrase || null
+        };
+    };
+
+    const buildComportement = () => {
+        const avecMere = getFieldValue('compMere');
+        const avecPere = getFieldValue('compPere');
+        const avecFreres = getFieldValue('compFreres');
+        const aEcole = getFieldValue('compEcole');
+        const autres = getFieldValue('compAutres');
+
+        if (!avecMere && !avecPere && !avecFreres && !aEcole && !autres) {
+            return null;
+        }
+
+        return {
+            avecMere: avecMere || null,
+            avecPere: avecPere || null,
+            avecFreres: avecFreres || null,
+            aEcole: aEcole || null,
+            autres: autres || null
+        };
+    };
+
+    const buildDivers = () => {
+        const scolarisation = getFieldValue('scolarisation');
+        const sommeil = getFieldValue('sommeil');
+        const appetit = getFieldValue('appetit');
+        const proprete = getFieldValue('proprete');
+
+        if (!scolarisation && !sommeil && !appetit && !proprete) {
+            return null;
+        }
+
+        return {
+            scolarisation: scolarisation || null,
+            sommeil: sommeil || null,
+            appetit: appetit || null,
+            proprete: proprete || null
+        };
+    };
+
+    const buildAntecedents = () => {
+        const personnels = getFieldValue('antecedentsPersonnels');
+        const familiaux = getFieldValue('antecedentsFamiliaux');
+
+        if (!personnels && !familiaux) {
+            return null;
+        }
+
+        return {
+            personnels: personnels || null,
+            familiaux: familiaux || null
+        };
+    };
+
+    // Construction de l'objet final
+    const data = {
+        numAnamnese: getFieldValue('numAnamnese'),
+        dateEntretien: getFieldValue('dateEntretien'),
+        nomPrenom: getFieldValue('nomPrenom'),
+        dateNaissance: getFieldValue('dateNaissance'),
+        adressePar: getFieldValue('adressePar') || null,
+        motifConsultation: getFieldValue('motifConsultation') || null,
+        reeducationAnterieure: getFieldValue('reeducationAnterieure') || null,
+        statut: getSelectValue('statut') || 'EN_ATTENTE',
+        observations: getFieldValue('observations') || null
+    };
+
+    // Ajouter les propriétés optionnelles
+    if (patient) data.patient = patient;
+
+    const consanguiniteValue = getRadioValue('consanguinite');
+    if (consanguiniteValue !== null) data.consanguinite = consanguiniteValue;
+
+    const fraterie = getFieldValue('fraterie');
+    if (fraterie) data.fraterie = fraterie;
+
+    const parents = buildParents();
+    if (parents) data.parents = parents;
+
+    const grossesse = buildGrossesse();
+    if (grossesse) data.grossesse = grossesse;
+
+    const accouchement = buildAccouchement();
+    if (accouchement) data.accouchement = accouchement;
+
+    const allaitement = buildAllaitement();
+    if (allaitement) data.allaitement = allaitement;
+
+    const developpement = buildDeveloppement();
+    if (developpement) data.developpement = developpement;
+
+    const langage = buildLangage();
+    if (langage) data.langage = langage;
+
+    const comportement = buildComportement();
+    if (comportement) data.comportement = comportement;
+
+    const divers = buildDivers();
+    if (divers) data.divers = divers;
+
+    const antecedents = buildAntecedents();
+    if (antecedents) data.antecedents = antecedents;
+
+    console.log('📦 Données à envoyer:', JSON.stringify(data, null, 2));
+    return data;
+}
+
+function validateFormData(data) {
+    const errors = [];
+
+    if (!data.dateEntretien) {
+        errors.push('Date d\'entretien requise');
+    }
+
+    if (!data.nomPrenom) {
+        errors.push('Nom et prénom requis');
+    }
+
+    if (!data.dateNaissance) {
+        errors.push('Date de naissance requise');
+    }
+
+    // Validation des dates
+    if (data.dateEntretien && data.dateNaissance) {
+        const dateEntretien = new Date(data.dateEntretien);
+        const dateNaissance = new Date(data.dateNaissance);
+
+        if (dateNaissance > dateEntretien) {
+            errors.push('La date de naissance ne peut pas être postérieure à la date d\'entretien');
+        }
+    }
+
+    if (errors.length > 0) {
+        console.error('❌ Erreurs de validation:', errors);
+        showNotification('error', errors.join('\n'));
+        return false;
+    }
+
+    return true;
+}
+
+// Validation
+function validateForm() {
+    const requiredFields = ['dateEntretien', 'nomPrenom', 'dateNaissance'];
+    let isValid = true;
+    const errors = [];
+
+    requiredFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (!field) {
+            console.error(`Champ ${fieldId} introuvable dans le DOM`);
+            return;
+        }
+
+        if (!field.value.trim()) {
+            field.classList.add('border-red-500');
+            errors.push(field.previousElementSibling?.textContent || fieldId);
+            isValid = false;
+        } else {
+            field.classList.remove('border-red-500');
+        }
+    });
+
+    if (!isValid) {
+        showNotification('error', `Champs requis: ${errors.join(', ')}`);
+    }
+
+    return isValid;
+}
+
+// Réinitialisation du formulaire
+async function resetForm() {
+    const form = document.getElementById('newAnamneseForm');
+    if (!form) {
+        console.error('Formulaire newAnamneseForm introuvable');
+        return;
+    }
+
+    form.reset();
+
+    // Reset des radio buttons personnalisés
+    document.querySelectorAll('.custom-radio').forEach(radio => {
+        radio.classList.remove('checked');
+    });
+
+    // Générer un nouveau numéro
+    try {
+        const newNumber = await AnamneseAPI.generateNumber();
+        const numField = document.getElementById('numAnamnese');
+        if (numField) {
+            numField.value = newNumber;
+        }
+    } catch (error) {
+        console.error('Erreur génération numéro:', error);
+        const numField = document.getElementById('numAnamnese');
+        if (numField) {
+            numField.value = 'AN-001';
+        }
+    }
+
+    // Date du jour
+    const dateField = document.getElementById('dateEntretien');
+    if (dateField) {
+        dateField.valueAsDate = new Date();
+    }
+
+    // ✅ AMÉLIORATION : Reset complet des données patient
+    const searchField = document.getElementById('patientSearch');
+    const hiddenField = document.getElementById('patientId');
+    const clearBtn = document.getElementById('patientClear');
+    const nomPrenomField = document.getElementById('nomPrenom');
+    const dateNaissanceField = document.getElementById('dateNaissance');
+
+    if (searchField) searchField.value = '';
+    if (hiddenField) hiddenField.value = '';
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (nomPrenomField) nomPrenomField.value = '';
+    if (dateNaissanceField) dateNaissanceField.value = '';
+
+    // Fermer toutes les sections et réinitialiser les flèches
+    const sections = ['parents', 'grossesse', 'accouchement', 'allaitement', 'developpement', 'langage', 'comportement', 'divers', 'antecedents', 'observations'];
+    sections.forEach(section => {
+        const sectionElement = document.getElementById(`section-${section}`);
+        const arrow = document.getElementById(`arrow-${section}`);
+
+        if (sectionElement) {
+            sectionElement.classList.add('hidden');
+        }
+        if (arrow) {
+            arrow.classList.remove('ri-arrow-up-s-line');
+            arrow.classList.add('ri-arrow-down-s-line');
+        }
+    });
+
+    // Supprimer les erreurs de validation
+    document.querySelectorAll('.border-red-500').forEach(el => {
+        el.classList.remove('border-red-500');
+    });
+
+    console.log('✅ Formulaire réinitialisé avec nettoyage complet des données patient');
+}
+
+function validatePatientSelection(searchInputId) {
+    const hiddenInput = document.getElementById(searchInputId.replace('Search', 'Id'));
+    const nomPrenomField = document.getElementById(searchInputId.includes('edit') ? 'editNomPrenom' : 'nomPrenom');
+    const dateNaissanceField = document.getElementById(searchInputId.includes('edit') ? 'editDateNaissance' : 'dateNaissance');
+
+    // Vérifier qu'un patient est bien sélectionné
+    if (hiddenInput && hiddenInput.value) {
+        // Supprimer les erreurs de validation sur les champs auto-remplis
+        if (nomPrenomField) nomPrenomField.classList.remove('border-red-500');
+        if (dateNaissanceField) dateNaissanceField.classList.remove('border-red-500');
+
+        return true;
+    }
+
+    return false;
+}
+
+// Gestion des modals
+function openNewAnamneseModal() {
+    resetForm();
+    const modal = document.getElementById('newAnamneseModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeNewAnamneseModal() {
+    const modal = document.getElementById('newAnamneseModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function openEditModal(anamnese) {
+    console.log('🔄 Ouverture du modal d\'édition...');
+
+    // Créer dynamiquement le formulaire d'édition
+    createEditForm();
+
+    // ✅ Vérifier la structure après création
+    setTimeout(() => {
+        verifyEditFormStructure();
+        debugEditSections();
+    }, 100);
+
+    // Remplir le formulaire avec les données de l'anamnèse
+    fillEditForm(anamnese);
+
+    // Mettre à jour les informations d'en-tête
+    const numberEl = document.getElementById('editAnamneseNumber');
+    const statutEl = document.getElementById('editStatut');
+
+    if (numberEl) numberEl.textContent = anamnese.numAnamnese;
+    if (statutEl) statutEl.value = anamnese.statut;
+
+    // Initialiser la recherche de patients pour l'édition
+    initPatientSearch('editPatientSearch', 'editPatientOptions', 'editPatientId', 'editPatientClear', 'editNomPrenom');
+
+    // ✅ SUPPRIMÉ: L'ouverture automatique des sections
+    // Les sections restent fermées par défaut comme dans le formulaire de création
+    console.log('📁 Sections gardées fermées par défaut');
+
+    const modal = document.getElementById('editAnamneseModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editAnamneseModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function createEditForm() {
+    const container = document.getElementById('editAnamneseFormContainer');
+    if (!container) return;
+
+    // Cloner le formulaire de création
+    const originalForm = document.getElementById('newAnamneseForm');
+    if (!originalForm) return;
+
+    const clonedForm = originalForm.cloneNode(true);
+    clonedForm.id = 'editAnamneseForm';
+
+    // Mettre à jour tous les IDs et noms pour l'édition
+    updateFormIds(clonedForm, 'edit');
+
+    container.innerHTML = '';
+    container.appendChild(clonedForm);
+
+    console.log('✅ Formulaire d\'édition créé et configuré');
+}
+
+function updateFormIds(form, prefix) {
+    console.log(`🔄 Mise à jour des IDs avec le préfixe: ${prefix}`);
+
+    // ✅ 1. D'abord, traiter spécifiquement les sections et arrows
+    const sections = form.querySelectorAll('[id^="section-"], [id^="arrow-"]');
+    console.log(`📋 ${sections.length} sections/arrows trouvées à renommer`);
+
+    sections.forEach(element => {
+        const oldId = element.id;
+        let newId;
+
+        if (element.id.startsWith('section-')) {
+            const sectionName = element.id.replace('section-', '');
+            newId = `${prefix}-section-${sectionName}`;
+        } else if (element.id.startsWith('arrow-')) {
+            const arrowName = element.id.replace('arrow-', '');
+            newId = `${prefix}-arrow-${arrowName}`;
+        }
+
+        if (newId) {
+            element.id = newId;
+            console.log(`  🏷️ ${oldId} → ${newId}`);
+        }
+    });
+
+    // ✅ 2. Ensuite, traiter tous les autres éléments avec ID/name
+    const otherElements = form.querySelectorAll('[id]:not([id^="' + prefix + '-"]), [name]:not([name^="' + prefix + '"])');
+    console.log(`📝 ${otherElements.length} autres éléments à renommer`);
+
+    otherElements.forEach(element => {
+        // Traiter les IDs
+        if (element.id && !element.id.startsWith(prefix) && !element.id.startsWith('section-') && !element.id.startsWith('arrow-')) {
+            const oldId = element.id;
+            const newId = `${prefix}${element.id.charAt(0).toUpperCase()}${element.id.slice(1)}`;
+            element.id = newId;
+            console.log(`  🏷️ ID: ${oldId} → ${newId}`);
+        }
+
+        // Traiter les names
+        if (element.name && !element.name.startsWith(prefix)) {
+            const oldName = element.name;
+            const newName = `${prefix}${element.name.charAt(0).toUpperCase()}${element.name.slice(1)}`;
+            element.name = newName;
+            console.log(`  📛 Name: ${oldName} → ${newName}`);
+        }
+    });
+
+    // ✅ 3. Mettre à jour les data-name des radio buttons
+    const customRadios = form.querySelectorAll('.custom-radio[data-name]');
+    console.log(`🔘 ${customRadios.length} radio buttons trouvés`);
+
+    customRadios.forEach(radio => {
+        const currentName = radio.dataset.name;
+        if (!currentName.startsWith(prefix)) {
+            const newName = `${prefix}${currentName.charAt(0).toUpperCase()}${currentName.slice(1)}`;
+            radio.dataset.name = newName;
+            console.log(`  🔘 Radio data-name: ${currentName} → ${newName}`);
+        }
+    });
+
+    // ✅ 4. Remplacer les onclick par des event listeners appropriés
+    const sectionButtons = form.querySelectorAll('button[onclick*="toggleSection"]');
+    console.log(`🔘 ${sectionButtons.length} boutons de section trouvés`);
+
+    sectionButtons.forEach(button => {
+        const onclick = button.getAttribute('onclick');
+        const sectionName = onclick.match(/toggleSection\('([^']+)'\)/)?.[1];
+
+        if (sectionName) {
+            // Supprimer l'ancien onclick
+            button.removeAttribute('onclick');
+
+            // Ajouter un event listener
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                toggleEditSection(sectionName);
+                console.log(`🖱️ Clic sur section: ${sectionName}`);
+            });
+
+            console.log(`  🔘 Bouton configuré pour section: ${sectionName}`);
+        }
+    });
+
+    // ✅ 5. Réinitialiser les radio buttons pour le formulaire d'édition
+    console.log(`🔄 Initialisation des radio buttons pour le préfixe: ${prefix}`);
+    initCustomRadioButtonsForForm(form, prefix);
+
+    console.log(`✅ Mise à jour des IDs terminée pour le préfixe: ${prefix}`);
+}
+
+
+function toggleEditSection(sectionName) {
+    // ✅ CORRECTION: Utiliser les IDs avec le préfixe 'edit-'
+    const section = document.getElementById(`edit-section-${sectionName}`);
+    const arrow = document.getElementById(`edit-arrow-${sectionName}`);
+
+    if (section && arrow) {
+        const isHidden = section.classList.contains('hidden');
+
+        if (isHidden) {
+            section.classList.remove('hidden');
+            arrow.classList.remove('ri-arrow-down-s-line');
+            arrow.classList.add('ri-arrow-up-s-line');
+            console.log(`✅ Section ${sectionName} ouverte`);
+        } else {
+            section.classList.add('hidden');
+            arrow.classList.remove('ri-arrow-up-s-line');
+            arrow.classList.add('ri-arrow-down-s-line');
+            console.log(`✅ Section ${sectionName} fermée`);
+        }
+    } else {
+        console.warn(`❌ Section ou arrow non trouvé: edit-section-${sectionName}, edit-arrow-${sectionName}`);
+
+        // ✅ DEBUG: Lister toutes les sections disponibles
+        const allSections = document.querySelectorAll('[id*="section-"]');
+        const allArrows = document.querySelectorAll('[id*="arrow-"]');
+
+        console.log('🔍 Sections disponibles:', Array.from(allSections).map(s => s.id));
+        console.log('🔍 Arrows disponibles:', Array.from(allArrows).map(a => a.id));
+    }
+}
+
+function fillEditForm(anamnese) {
+    // Remplir les champs de base
+    const fields = {
+        'editNumAnamnese': anamnese.numAnamnese,
+        'editDateEntretien': formatDateForInput(anamnese.dateEntretien),
+        'editNomPrenom': anamnese.nomPrenom,
+        'editDateNaissance': formatDateForInput(anamnese.dateNaissance),
+        'editAdressePar': anamnese.adressePar,
+        'editMotifConsultation': anamnese.motifConsultation,
+        'editReeducationAnterieure': anamnese.reeducationAnterieure,
+        'editObservations': anamnese.observations
+    };
+
+    Object.entries(fields).forEach(([fieldId, value]) => {
+        const field = document.getElementById(fieldId);
+        if (field && value) {
+            field.value = value;
+        }
+    });
+
+    // Patient
+    if (anamnese.patient) {
+        const patientIdField = document.getElementById('editPatientId');
+        const patientSearchField = document.getElementById('editPatientSearch');
+        const patientClearBtn = document.getElementById('editPatientClear');
+
+        if (patientIdField) patientIdField.value = anamnese.patient.id;
+        if (patientSearchField) patientSearchField.value = anamnese.nomPrenom;
+        if (patientClearBtn) patientClearBtn.style.display = 'block';
+    }
+
+    // Parents
+    if (anamnese.parents) {
+        const parentFields = {
+            'editNomPere': anamnese.parents.nomPere,
+            'editAgePere': anamnese.parents.agePere,
+            'editProfessionPere': anamnese.parents.professionPere,
+            'editNomMere': anamnese.parents.nomMere,
+            'editAgeMere': anamnese.parents.ageMere,
+            'editProfessionMere': anamnese.parents.professionMere
+        };
+
+        Object.entries(parentFields).forEach(([fieldId, value]) => {
+            const field = document.getElementById(fieldId);
+            if (field && value) {
+                field.value = value;
+            }
+        });
+    }
+
+    // ✅ RADIO BUTTONS avec la nouvelle méthode
+    // Consanguinité
+    if (anamnese.consanguinite !== null) {
+        setCustomRadioValue('consanguinite', anamnese.consanguinite, 'edit');
+    }
+
+    const fraterieField = document.getElementById('editFraterie');
+    if (fraterieField && anamnese.fraterie) {
+        fraterieField.value = anamnese.fraterie;
+    }
+
+    // Grossesse
+    if (anamnese.grossesse) {
+        if (anamnese.grossesse.desire !== null) {
+            setCustomRadioValue('grossesseDesire', anamnese.grossesse.desire, 'edit');
+        }
+        if (anamnese.grossesse.compliquee !== null) {
+            setCustomRadioValue('grossesseCompliquee', anamnese.grossesse.compliquee, 'edit');
+        }
+        const grossesseAutresField = document.getElementById('editGrossesseAutres');
+        if (grossesseAutresField && anamnese.grossesse.autres) {
+            grossesseAutresField.value = anamnese.grossesse.autres;
+        }
+    }
+
+    // Accouchement
+    if (anamnese.accouchement) {
+        const accouchementFields = ['terme', 'premature', 'postMature', 'voieBasse', 'cesarienne', 'cris'];
+        accouchementFields.forEach(field => {
+            if (anamnese.accouchement[field] !== null) {
+                setCustomRadioValue(`accouchement${field.charAt(0).toUpperCase()}${field.slice(1)}`, anamnese.accouchement[field], 'edit');
+            }
+        });
+
+        const accouchementAutresField = document.getElementById('editAccouchementAutres');
+        if (accouchementAutresField && anamnese.accouchement.autres) {
+            accouchementAutresField.value = anamnese.accouchement.autres;
+        }
+    }
+
+    // Allaitement
+    if (anamnese.allaitement) {
+        if (anamnese.allaitement.type) {
+            setCustomRadioValue('allaitementType', anamnese.allaitement.type, 'edit');
+        }
+        const allaitementDureeField = document.getElementById('editAllaitementDuree');
+        if (allaitementDureeField && anamnese.allaitement.duree) {
+            allaitementDureeField.value = anamnese.allaitement.duree;
+        }
+    }
+
+    // Développement
+    if (anamnese.developpement) {
+        const devFields = {
+            'editTenueTete': anamnese.developpement.tenueTete,
+            'editPositionAssise': anamnese.developpement.positionAssise,
+            'editQuatrePattes': anamnese.developpement.quatrePattes,
+            'editPositionDebout': anamnese.developpement.positionDebout,
+            'editMarche': anamnese.developpement.marche
+        };
+
+        Object.entries(devFields).forEach(([fieldId, value]) => {
+            const field = document.getElementById(fieldId);
+            if (field && value) {
+                field.value = value;
+            }
+        });
+    }
+
+    // Langage
+    if (anamnese.langage) {
+        const langageFields = {
+            'editPremierMot': anamnese.langage.premierMot,
+            'editPremierePhrase': anamnese.langage.premierePhrase
+        };
+
+        Object.entries(langageFields).forEach(([fieldId, value]) => {
+            const field = document.getElementById(fieldId);
+            if (field && value) {
+                field.value = value;
+            }
+        });
+    }
+
+    // Comportement
+    if (anamnese.comportement) {
+        const compFields = {
+            'editCompMere': anamnese.comportement.avecMere,
+            'editCompPere': anamnese.comportement.avecPere,
+            'editCompFreres': anamnese.comportement.avecFreres,
+            'editCompEcole': anamnese.comportement.aEcole,
+            'editCompAutres': anamnese.comportement.autres
+        };
+
+        Object.entries(compFields).forEach(([fieldId, value]) => {
+            const field = document.getElementById(fieldId);
+            if (field && value) {
+                field.value = value;
+            }
+        });
+    }
+
+    // Divers
+    if (anamnese.divers) {
+        const diversFields = {
+            'editScolarisation': anamnese.divers.scolarisation,
+            'editSommeil': anamnese.divers.sommeil,
+            'editAppetit': anamnese.divers.appetit,
+            'editProprete': anamnese.divers.proprete
+        };
+
+        Object.entries(diversFields).forEach(([fieldId, value]) => {
+            const field = document.getElementById(fieldId);
+            if (field && value) {
+                field.value = value;
+            }
+        });
+    }
+
+    // Antécédents
+    if (anamnese.antecedents) {
+        const antFields = {
+            'editAntecedentsPersonnels': anamnese.antecedents.personnels,
+            'editAntecedentsFamiliaux': anamnese.antecedents.familiaux
+        };
+
+        Object.entries(antFields).forEach(([fieldId, value]) => {
+            const field = document.getElementById(fieldId);
+            if (field && value) {
+                field.value = value;
+            }
+        });
+    }
+}
+
+function openViewModal(anamnese) {
+    const content = document.getElementById('viewAnamneseContent');
+    if (!content) return;
+
+    // Remplir les informations d'en-tête
+    const numberEl = document.getElementById('viewAnamneseNumber');
+    const statusBadge = document.getElementById('viewAnamneseStatut');
+
+    if (numberEl) numberEl.textContent = anamnese.numAnamnese;
+    if (statusBadge) {
+        statusBadge.className = `status-badge ${getStatusClass(anamnese.statut)}`;
+        statusBadge.textContent = getStatusLabel(anamnese.statut);
+    }
+
+    // Générer le contenu de visualisation
+    content.innerHTML = generateViewContent(anamnese);
+
+    // Afficher le modal
+    const modal = document.getElementById('viewAnamneseModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeViewModal() {
+    const modal = document.getElementById('viewAnamneseModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function generateViewContent(anamnese) {
+    const formatBooleanValue = (value) => {
+        if (value === null || value === undefined) return 'Non renseigné';
+        return value ? 'Oui' : 'Non';
+    };
+
+    const formatValue = (value) => {
+        return value || 'Non renseigné';
+    };
+
+    return `
+        <!-- Informations de base -->
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Informations générales</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><strong>Numéro d'anamnèse :</strong> ${anamnese.numAnamnese}</div>
+                <div><strong>Date d'entretien :</strong> ${formatDate(anamnese.dateEntretien)}</div>
+                <div><strong>Nom et prénom :</strong> ${anamnese.nomPrenom}</div>
+                <div><strong>Date de naissance :</strong> ${formatDate(anamnese.dateNaissance)}</div>
+                <div><strong>Adressé par :</strong> ${formatValue(anamnese.adressePar)}</div>
+                <div><strong>Motif de consultation :</strong> ${formatValue(anamnese.motifConsultation)}</div>
+                <div class="md:col-span-2"><strong>Rééducation antérieure :</strong> ${formatValue(anamnese.reeducationAnterieure)}</div>
+            </div>
+        </div>
+
+        <!-- Informations sur les parents -->
+        ${anamnese.parents ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Informations sur les parents</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h5 class="font-medium text-gray-700 mb-2">Père</h5>
+                    <div class="text-sm space-y-1">
+                        <div><strong>Nom :</strong> ${formatValue(anamnese.parents.nomPere)}</div>
+                        <div><strong>Âge :</strong> ${formatValue(anamnese.parents.agePere)}</div>
+                        <div><strong>Profession :</strong> ${formatValue(anamnese.parents.professionPere)}</div>
+                    </div>
+                </div>
+                <div>
+                    <h5 class="font-medium text-gray-700 mb-2">Mère</h5>
+                    <div class="text-sm space-y-1">
+                        <div><strong>Nom :</strong> ${formatValue(anamnese.parents.nomMere)}</div>
+                        <div><strong>Âge :</strong> ${formatValue(anamnese.parents.ageMere)}</div>
+                        <div><strong>Profession :</strong> ${formatValue(anamnese.parents.professionMere)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 text-sm">
+                <div><strong>Consanguinité :</strong> ${formatBooleanValue(anamnese.consanguinite)}</div>
+                <div class="mt-2"><strong>Fraterie :</strong> ${formatValue(anamnese.fraterie)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Grossesse -->
+        ${anamnese.grossesse ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Grossesse</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><strong>Désirée :</strong> ${formatBooleanValue(anamnese.grossesse.desire)}</div>
+                <div><strong>Compliquée :</strong> ${formatBooleanValue(anamnese.grossesse.compliquee)}</div>
+                <div class="md:col-span-2"><strong>Autres informations :</strong> ${formatValue(anamnese.grossesse.autres)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Accouchement -->
+        ${anamnese.accouchement ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Accouchement</h4>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div><strong>À terme :</strong> ${formatBooleanValue(anamnese.accouchement.terme)}</div>
+                <div><strong>Prématuré :</strong> ${formatBooleanValue(anamnese.accouchement.premature)}</div>
+                <div><strong>Post-maturé :</strong> ${formatBooleanValue(anamnese.accouchement.postMature)}</div>
+                <div><strong>Voie basse :</strong> ${formatBooleanValue(anamnese.accouchement.voieBasse)}</div>
+                <div><strong>Césarienne :</strong> ${formatBooleanValue(anamnese.accouchement.cesarienne)}</div>
+                <div><strong>Cris :</strong> ${formatBooleanValue(anamnese.accouchement.cris)}</div>
+            </div>
+            <div class="mt-4 text-sm">
+                <div><strong>Autres informations :</strong> ${formatValue(anamnese.accouchement.autres)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Allaitement -->
+        ${anamnese.allaitement ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Allaitement</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><strong>Type :</strong> ${formatValue(anamnese.allaitement.type)}</div>
+                <div><strong>Durée :</strong> ${anamnese.allaitement.duree ? anamnese.allaitement.duree + ' mois' : 'Non renseigné'}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Développement psychomoteur -->
+        ${anamnese.developpement ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Développement psychomoteur</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><strong>Tenue de la tête :</strong> ${formatValue(anamnese.developpement.tenueTete)}</div>
+                <div><strong>Position assise :</strong> ${formatValue(anamnese.developpement.positionAssise)}</div>
+                <div><strong>Quatre pattes :</strong> ${formatValue(anamnese.developpement.quatrePattes)}</div>
+                <div><strong>Position debout :</strong> ${formatValue(anamnese.developpement.positionDebout)}</div>
+                <div class="md:col-span-2"><strong>Marche :</strong> ${formatValue(anamnese.developpement.marche)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Langage -->
+        ${anamnese.langage ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Langage</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><strong>Premier mot :</strong> ${formatValue(anamnese.langage.premierMot)}</div>
+                <div><strong>Première phrase :</strong> ${formatValue(anamnese.langage.premierePhrase)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Comportement -->
+        ${anamnese.comportement ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Comportement</h4>
+            <div class="text-sm space-y-2">
+                <div><strong>Avec la mère :</strong> ${formatValue(anamnese.comportement.avecMere)}</div>
+                <div><strong>Avec le père :</strong> ${formatValue(anamnese.comportement.avecPere)}</div>
+                <div><strong>Avec les frères/sœurs :</strong> ${formatValue(anamnese.comportement.avecFreres)}</div>
+                <div><strong>À l'école :</strong> ${formatValue(anamnese.comportement.aEcole)}</div>
+                <div><strong>Autres :</strong> ${formatValue(anamnese.comportement.autres)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Autres informations -->
+        ${anamnese.divers ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Autres informations</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><strong>Scolarisation :</strong> ${formatValue(anamnese.divers.scolarisation)}</div>
+                <div><strong>Sommeil :</strong> ${formatValue(anamnese.divers.sommeil)}</div>
+                <div><strong>Appétit :</strong> ${formatValue(anamnese.divers.appetit)}</div>
+                <div><strong>Propreté :</strong> ${formatValue(anamnese.divers.proprete)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Antécédents -->
+        ${anamnese.antecedents ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Antécédents</h4>
+            <div class="text-sm space-y-2">
+                <div><strong>Personnels :</strong> ${formatValue(anamnese.antecedents.personnels)}</div>
+                <div><strong>Familiaux :</strong> ${formatValue(anamnese.antecedents.familiaux)}</div>
+            </div>
+        </div>
+        ` : ''}
+
+        <!-- Observations -->
+        ${anamnese.observations ? `
+        <div class="bg-gray-50 rounded-lg p-4">
+            <h4 class="font-semibold text-gray-800 mb-3">Observations</h4>
+            <div class="text-sm whitespace-pre-wrap">${anamnese.observations}</div>
+        </div>
+        ` : ''}
+    `;
+}
+
+function validateFormWithPrefix(prefix = '') {
+    const getFieldId = (fieldName) => prefix ? `${prefix}${fieldName.charAt(0).toUpperCase()}${fieldName.slice(1)}` : fieldName;
+
+    const requiredFields = ['dateEntretien', 'nomPrenom', 'dateNaissance'];
+    let isValid = true;
+    const errors = [];
+
+    requiredFields.forEach(fieldName => {
+        const fieldId = getFieldId(fieldName);
+        const field = document.getElementById(fieldId);
+
+        if (!field) {
+            console.error(`Champ ${fieldId} introuvable`);
+            return;
+        }
+
+        if (!field.value.trim()) {
+            field.classList.add('border-red-500');
+            errors.push(fieldName);
+            isValid = false;
+        } else {
+            field.classList.remove('border-red-500');
+        }
+    });
+
+    if (!isValid) {
+        showNotification('error', `Champs requis: ${errors.join(', ')}`);
+    }
+
+    return isValid;
+}
+
+// Sauvegarde des anamnèses
+async function saveAnamnese(isEdit = false) {
+    try {
+        const prefix = isEdit ? 'edit' : '';
+
+        // Validation basique des champs
+        if (!validateFormWithPrefix(prefix)) {
+            return;
+        }
+
+        // Récupération des données
+        const formData = getFormData(prefix);
+
+        // Validation des données
+        if (!validateFormData(formData)) {
+            return;
+        }
+
+        console.log('📤 Envoi des données:', formData);
+
+        if (isEdit && selectedAnamnese) {
+            // Ajouter le statut depuis le select
+            const statutSelect = document.getElementById('editStatut');
+            if (statutSelect) {
+                formData.statut = statutSelect.value;
+            }
+
+            const updatedAnamnese = await AnamneseAPI.update(selectedAnamnese.id, formData);
+            showNotification('success', 'Anamnèse mise à jour avec succès');
+            closeEditModal();
+        } else {
+            const newAnamnese = await AnamneseAPI.create(formData);
+            showNotification('success', 'Anamnèse créée avec succès');
+            closeNewAnamneseModal();
+        }
+
+        await loadAnamneses();
+
+    } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde:', error);
+        showNotification('error', error.message || 'Erreur lors de la sauvegarde');
+    }
+}
+
+// Suppression des anamnèses
+async function deleteAnamnese() {
+    if (!selectedAnamnese) return;
+
+    try {
+        await AnamneseAPI.delete(selectedAnamnese.id);
+        showNotification('success', 'Anamnèse supprimée avec succès');
+        const modal = document.getElementById('deleteConfirmModal');
+        if (modal) modal.classList.add('hidden');
+        selectedAnamnese = null;
+
+        // Recharger la liste
+        await loadAnamneses();
+
+    } catch (error) {
+        console.error('Erreur lors de la suppression:', error);
+        showNotification('error', 'Erreur lors de la suppression');
+    }
+}
+
+// Impression avec iframe - À remplacer dans anamnese.js
+function printAnamnese() {
+    if (!selectedAnamnese) {
+        showNotification('error', 'Aucune anamnèse sélectionnée');
+        return;
+    }
+
+    // Créer l'iframe pour l'impression
+    const printFrame = document.createElement('iframe');
+    printFrame.style.position = 'fixed';
+    printFrame.style.top = '-1000px';
+    printFrame.style.left = '-1000px';
+    printFrame.style.width = '1px';
+    printFrame.style.height = '1px';
+    printFrame.style.opacity = '0';
+    document.body.appendChild(printFrame);
+
+    const printContent = generatePrintContent(selectedAnamnese);
+
+    // Écrire le contenu dans l'iframe
+    const frameDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+    frameDoc.open();
+    frameDoc.write(printContent);
+    frameDoc.close();
+
+    // Attendre que l'image soit chargée puis imprimer
+    const img = frameDoc.querySelector('.logo');
+    if (img) {
+        img.onload = function() {
+            setTimeout(() => {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+                setTimeout(() => {
+                    document.body.removeChild(printFrame);
+                }, 1000);
+            }, 500);
+        };
+
+        img.onerror = function() {
+            console.warn('Image non trouvée, impression sans image');
+            setTimeout(() => {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+                setTimeout(() => {
+                    document.body.removeChild(printFrame);
+                }, 1000);
+            }, 500);
+        };
+    } else {
+        // Si pas d'image, imprimer directement
+        setTimeout(() => {
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+            setTimeout(() => {
+                document.body.removeChild(printFrame);
+            }, 1000);
+        }, 500);
+    }
+}
+
+// Fonction mise à jour pour generatePrintContent avec logo
+// Fonction pour générer le contenu imprimable du compte rendu
+function generatePrintContent(anamnese) {
+    const formatBooleanValue = (value) => {
+        if (value === null || value === undefined) return 'Non renseigné';
+        return value ? 'Oui' : 'Non';
+    };
+
+    const formatValue = (value) => {
+        return value || 'Non renseigné';
+    };
+
+    // ✅ FONCTION POUR CASSER LES MOTS TRÈS LONGS
+    const breakLongWords = (text) => {
+        if (!text) return text;
+        // Couper les mots de plus de 30 caractères
+        return text.replace(/\S{30,}/g, (match) => {
+            return match.replace(/(.{30})/g, '$1​'); // Ajouter un caractère de coupure invisible
+        });
+    };
+
+    // Récupérer le chemin absolu de l'image depuis la page actuelle
+    const baseUrl = window.location.origin;
+    const imagePath = `${baseUrl}/images/Multi-Dys.jpg`;
+
+    return `
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <title>Anamnèse ${anamnese.numAnamnese}</title>
+        <meta charset="UTF-8">
+        <style>
+            @media print {
+                * {
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    white-space: normal !important;
+                    max-width: 100% !important;
+                    box-sizing: border-box !important;
+                }
+                
+                body { 
+                    font-family: 'Times New Roman', serif !important;
+                    font-size: 11pt !important;
+                    line-height: 1.4 !important;
+                    padding: 15px !important;
+                    margin: 0 !important;
+                    max-width: 100% !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    color: #000;
+                }
+                
+                .header {
+                    text-align: center !important;
+                    margin-bottom: 25px !important;
+                    border-bottom: 2px solid #333 !important;
+                    padding-bottom: 15px !important;
+                    page-break-after: avoid !important;
+                }
+                
+                .logo {
+                    max-width: 150px !important; 
+                    height: auto !important; 
+                    margin-bottom: 10px !important;
+                    display: block !important;
+                    margin-left: auto !important;
+                    margin-right: auto !important;
+                }
+                
+                .header h1 {
+                    font-size: 16pt !important;
+                    font-weight: bold !important;
+                    margin-bottom: 8px !important;
+                    word-wrap: break-word !important;
+                }
+                
+                .section {
+                    margin-bottom: 15px !important;
+                    page-break-inside: avoid !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    max-width: 100% !important;
+                }
+                
+                .section-title {
+                    font-weight: bold !important;
+                    margin-bottom: 8px !important;
+                    font-size: 12pt !important;
+                    border-bottom: 1px solid #666 !important;
+                    padding-bottom: 3px !important;
+                    word-wrap: break-word !important;
+                }
+                
+                .field {
+                    margin-bottom: 5px !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    white-space: normal !important;
+                    max-width: 100% !important;
+                    display: block !important;
+                    line-height: 1.3 !important;
+                }
+                
+                .field strong {
+                    display: inline-block !important;
+                    width: 140px !important;
+                    font-weight: bold !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    vertical-align: top !important;
+                    margin-right: 10px !important;
+                }
+                
+                .field-content {
+                    display: inline !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    white-space: normal !important;
+                    max-width: calc(100% - 150px) !important;
+                    hyphens: auto !important;
+                }
+                
+                .two-columns {
+                    display: block !important;
+                    margin-bottom: 10px !important;
+                    word-wrap: break-word !important;
+                }
+                
+                .column {
+                    width: 100% !important;
+                    margin-bottom: 8px !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                }
+                
+                .long-text {
+                    white-space: pre-wrap !important;
+                    word-wrap: break-word !important;
+                    overflow-wrap: break-word !important;
+                    max-width: 100% !important;
+                    font-size: 10pt !important;
+                    line-height: 1.3 !important;
+                    hyphens: auto !important;
+                }
+                
+                @page {
+                    margin: 1cm;
+                }
+            }
+            
+            /* Styles pour l'écran aussi */
+            .field {
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                white-space: normal;
+                max-width: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <img src="${imagePath}" alt="Logo Centre Multi-Dys" class="logo">
+            <h1>ANAMNÈSE</h1>
+            <p><strong>Numéro :</strong> ${anamnese.numAnamnese}</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">INFORMATIONS GÉNÉRALES</div>
+            <div class="field">
+                <strong>Nom et prénom :</strong>
+                <span class="field-content">${breakLongWords(anamnese.nomPrenom)}</span>
+            </div>
+            <div class="field">
+                <strong>Date de naissance :</strong>
+                <span class="field-content">${formatDate(anamnese.dateNaissance)}</span>
+            </div>
+            <div class="field">
+                <strong>Date d'entretien :</strong>
+                <span class="field-content">${formatDate(anamnese.dateEntretien)}</span>
+            </div>
+            <div class="field">
+                <strong>Statut :</strong>
+                <span class="field-content">${getStatusLabel(anamnese.statut)}</span>
+            </div>
+            <div class="field">
+                <strong>Adressé par :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.adressePar))}</span>
+            </div>
+            <div class="field">
+                <strong>Motif de consultation :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.motifConsultation))}</span>
+            </div>
+            <div class="field">
+                <strong>Rééducation antérieure :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.reeducationAnterieure))}</span>
+            </div>
+        </div>
+
+        ${anamnese.parents ? `
+        <div class="section">
+            <div class="section-title">INFORMATIONS SUR LES PARENTS</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Père :</strong></p>
+                    <div class="field">Nom : <span class="field-content">${breakLongWords(formatValue(anamnese.parents.nomPere))}</span></div>
+                    <div class="field">Âge : <span class="field-content">${formatValue(anamnese.parents.agePere)}</span></div>
+                    <div class="field">Profession : <span class="field-content">${breakLongWords(formatValue(anamnese.parents.professionPere))}</span></div>
+                </div>
+                <div class="column">
+                    <p><strong>Mère :</strong></p>
+                    <div class="field">Nom : <span class="field-content">${breakLongWords(formatValue(anamnese.parents.nomMere))}</span></div>
+                    <div class="field">Âge : <span class="field-content">${formatValue(anamnese.parents.ageMere)}</span></div>
+                    <div class="field">Profession : <span class="field-content">${breakLongWords(formatValue(anamnese.parents.professionMere))}</span></div>
+                </div>
+            </div>
+            <div class="field">
+                <strong>Consanguinité :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.consanguinite)}</span>
+            </div>
+            <div class="field">
+                <strong>Fraterie :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.fraterie))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.grossesse ? `
+        <div class="section">
+            <div class="section-title">GROSSESSE</div>
+            <div class="field">
+                <strong>Désirée :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.grossesse.desire)}</span>
+            </div>
+            <div class="field">
+                <strong>Compliquée :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.grossesse.compliquee)}</span>
+            </div>
+            <div class="field">
+                <strong>Autres informations :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.grossesse.autres))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.accouchement ? `
+        <div class="section">
+            <div class="section-title">ACCOUCHEMENT</div>
+            <div class="field">
+                <strong>À terme :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.accouchement.terme)}</span>
+            </div>
+            <div class="field">
+                <strong>Prématuré :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.accouchement.premature)}</span>
+            </div>
+            <div class="field">
+                <strong>Post-maturé :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.accouchement.postMature)}</span>
+            </div>
+            <div class="field">
+                <strong>Voie basse :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.accouchement.voieBasse)}</span>
+            </div>
+            <div class="field">
+                <strong>Césarienne :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.accouchement.cesarienne)}</span>
+            </div>
+            <div class="field">
+                <strong>Cris :</strong>
+                <span class="field-content">${formatBooleanValue(anamnese.accouchement.cris)}</span>
+            </div>
+            <div class="field">
+                <strong>Autres informations :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.accouchement.autres))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.allaitement ? `
+        <div class="section">
+            <div class="section-title">ALLAITEMENT</div>
+            <div class="field">
+                <strong>Type :</strong>
+                <span class="field-content">${formatValue(anamnese.allaitement.type)}</span>
+            </div>
+            <div class="field">
+                <strong>Durée :</strong>
+                <span class="field-content">${anamnese.allaitement.duree ? anamnese.allaitement.duree + ' mois' : 'Non renseigné'}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.developpement ? `
+        <div class="section">
+            <div class="section-title">DÉVELOPPEMENT PSYCHOMOTEUR</div>
+            <div class="field">
+                <strong>Tenue de la tête :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.developpement.tenueTete))}</span>
+            </div>
+            <div class="field">
+                <strong>Position assise :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.developpement.positionAssise))}</span>
+            </div>
+            <div class="field">
+                <strong>Quatre pattes :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.developpement.quatrePattes))}</span>
+            </div>
+            <div class="field">
+                <strong>Position debout :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.developpement.positionDebout))}</span>
+            </div>
+            <div class="field">
+                <strong>Marche :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.developpement.marche))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.langage ? `
+        <div class="section">
+            <div class="section-title">LANGAGE</div>
+            <div class="field">
+                <strong>Premier mot :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.langage.premierMot))}</span>
+            </div>
+            <div class="field">
+                <strong>Première phrase :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.langage.premierePhrase))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.comportement ? `
+        <div class="section">
+            <div class="section-title">COMPORTEMENT</div>
+            <div class="field">
+                <strong>Avec la mère :</strong>
+                <span class="field-content long-text">${breakLongWords(formatValue(anamnese.comportement.avecMere))}</span>
+            </div>
+            <div class="field">
+                <strong>Avec le père :</strong>
+                <span class="field-content long-text">${breakLongWords(formatValue(anamnese.comportement.avecPere))}</span>
+            </div>
+            <div class="field">
+                <strong>Avec les frères/sœurs :</strong>
+                <span class="field-content long-text">${breakLongWords(formatValue(anamnese.comportement.avecFreres))}</span>
+            </div>
+            <div class="field">
+                <strong>À l'école :</strong>
+                <span class="field-content long-text">${breakLongWords(formatValue(anamnese.comportement.aEcole))}</span>
+            </div>
+            <div class="field">
+                <strong>Autres :</strong>
+                <span class="field-content long-text">${breakLongWords(formatValue(anamnese.comportement.autres))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.divers ? `
+        <div class="section">
+            <div class="section-title">AUTRES INFORMATIONS</div>
+            <div class="field">
+                <strong>Scolarisation :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.divers.scolarisation))}</span>
+            </div>
+            <div class="field">
+                <strong>Sommeil :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.divers.sommeil))}</span>
+            </div>
+            <div class="field">
+                <strong>Appétit :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.divers.appetit))}</span>
+            </div>
+            <div class="field">
+                <strong>Propreté :</strong>
+                <span class="field-content">${breakLongWords(formatValue(anamnese.divers.proprete))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.antecedents ? `
+        <div class="section">
+            <div class="section-title">ANTÉCÉDENTS</div>
+            <div class="field">
+                <strong>Personnels :</strong>
+                <span class="field-content long-text">${breakLongWords(formatValue(anamnese.antecedents.personnels))}</span>
+            </div>
+            <div class="field">
+                <strong>Familiaux :</strong>
+                <span class="field-content long-text">${breakLongWords(formatValue(anamnese.antecedents.familiaux))}</span>
+            </div>
+        </div>
+        ` : ''}
+
+        ${anamnese.observations ? `
+        <div class="section">
+            <div class="section-title">OBSERVATIONS</div>
+            <div class="field">
+                <div class="long-text">${breakLongWords(anamnese.observations)}</div>
+            </div>
+        </div>
+        ` : ''}
+    </body>
+    </html>
+    `;
+}
+
+// ✅ AJOUT : Gestion des radio buttons personnalisés
+function initCustomRadioButtons() {
+    console.log('🔘 Initialisation des radio buttons personnalisés pour le formulaire principal');
+
+    // Initialiser seulement pour le formulaire principal (nouveau)
+    const mainForm = document.getElementById('newAnamneseForm');
+    if (mainForm) {
+        initCustomRadioButtonsForForm(mainForm, '');
+    }
+}
+
+function initCustomRadioButtonsForForm(form, prefix = '') {
+    console.log(`🔘 Initialisation des radio buttons pour le formulaire ${prefix || 'principal'}`);
+
+    // Sélectionner uniquement les radio buttons du formulaire donné
+    const radioContainers = form.querySelectorAll('.custom-radio-container');
+
+    radioContainers.forEach(container => {
+        // Supprimer les anciens event listeners
+        const newContainer = container.cloneNode(true);
+        container.parentNode.replaceChild(newContainer, container);
+
+        // Ajouter le nouvel event listener
+        newContainer.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const radioButton = this.querySelector('.custom-radio');
+            if (!radioButton) return;
+
+            const name = radioButton.dataset.name;
+            const value = radioButton.dataset.value;
+
+            // Décocher tous les autres radio buttons du même groupe dans ce formulaire
+            form.querySelectorAll(`.custom-radio[data-name="${name}"]`).forEach(radio => {
+                radio.classList.remove('checked');
+            });
+
+            // Cocher celui cliqué
+            radioButton.classList.add('checked');
+
+            console.log(`✅ Radio sélectionné (${prefix}): ${name} = ${value}`);
+        });
+    });
+}
+
+function debugEditSections() {
+    const editSections = ['parents', 'grossesse', 'accouchement', 'allaitement', 'developpement', 'langage', 'comportement', 'divers', 'antecedents', 'observations'];
+
+    console.log('🔍 Debug des sections d\'édition:');
+    editSections.forEach(sectionName => {
+        const section = document.getElementById(`edit-section-${sectionName}`);
+        const arrow = document.getElementById(`edit-arrow-${sectionName}`);
+
+        console.log(`${sectionName}:`, {
+            section: section ? '✅' : '❌',
+            arrow: arrow ? '✅' : '❌'
+        });
+    });
+
+    // ✅ BONUS: Afficher toutes les sections trouvées
+    console.log('\n📋 Toutes les sections dans le DOM:');
+    const allSections = document.querySelectorAll('[id*="section-"]');
+    const allArrows = document.querySelectorAll('[id*="arrow-"]');
+
+    allSections.forEach(section => console.log(`  Section: ${section.id}`));
+    allArrows.forEach(arrow => console.log(`  Arrow: ${arrow.id}`));
+}
+
+// Notifications
+function showNotification(type, message) {
+    const notification = document.getElementById('notification');
+    const title = document.getElementById('notificationTitle');
+    const messageEl = document.getElementById('notificationMessage');
+
+    if (!notification || !title || !messageEl) return;
+
+    // Configurer le type de notification
+    notification.className = 'notification';
+    switch (type) {
+        case 'success':
+            notification.classList.add('bg-green-100', 'border-green-500', 'text-green-700');
+            title.textContent = 'Succès';
+            break;
+        case 'error':
+            notification.classList.add('bg-red-100', 'border-red-500', 'text-red-700');
+            title.textContent = 'Erreur';
+            break;
+        case 'warning':
+            notification.classList.add('bg-yellow-100', 'border-yellow-500', 'text-yellow-700');
+            title.textContent = 'Attention';
+            break;
+        default:
+            notification.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-700');
+            title.textContent = 'Information';
+    }
+
+    messageEl.textContent = message;
+    notification.classList.add('show');
+
+    // Masquer automatiquement après 5 secondes
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.className = 'notification';
+        }, 300);
+    }, 5000);
+}
+
+// Toggle Sidebar
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.getElementById('mainContent');
+    const openBtn = document.getElementById('openSidebarBtn');
+    const closeBtn = document.getElementById('closeSidebarBtn');
+
+    if (!sidebar || !mainContent) return;
+
+    const isHidden = sidebar.classList.contains('sidebar-hidden');
+
+    if (isHidden) {
+        sidebar.classList.remove('sidebar-hidden');
+        mainContent.classList.add('ml-64');
+        if (openBtn) {
+            openBtn.classList.add('hidden');
+            openBtn.style.display = 'none';
+        }
+        if (closeBtn) closeBtn.classList.remove('hidden');
+    } else {
+        sidebar.classList.add('sidebar-hidden');
+        mainContent.classList.remove('ml-64');
+        if (openBtn) {
+            openBtn.classList.remove('hidden');
+            openBtn.style.display = 'flex';
+        }
+        if (closeBtn) closeBtn.classList.add('hidden');
+    }
+}
+
+// Event Listeners
+function initializeEventListeners() {
+
+    //✅ AJOUT : Initialiser les radio buttons personnalisés
+    initCustomRadioButtons();
+
+    // Bouton nouvelle anamnèse
+    const newAnamneseBtn = document.getElementById('newAnamneseBtn');
+    if (newAnamneseBtn) newAnamneseBtn.addEventListener('click', openNewAnamneseModal);
+
+    // Modals - Fermeture
+    const closeNewBtn = document.getElementById('closeNewAnamneseBtn');
+    const cancelNewBtn = document.getElementById('cancelNewAnamneseBtn');
+    const closeEditBtn = document.getElementById('closeEditAnamneseBtn');
+    const cancelEditBtn = document.getElementById('cancelEditAnamneseBtn');
+    const closeViewBtn = document.getElementById('closeViewAnamneseBtn');
+
+    if (closeNewBtn) closeNewBtn.addEventListener('click', closeNewAnamneseModal);
+    if (cancelNewBtn) cancelNewBtn.addEventListener('click', closeNewAnamneseModal);
+    if (closeEditBtn) closeEditBtn.addEventListener('click', closeEditModal);
+    if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditModal);
+    if (closeViewBtn) closeViewBtn.addEventListener('click', closeViewModal);
+
+    // Modals - Sauvegarde
+    const saveNewBtn = document.getElementById('saveNewAnamneseBtn');
+    const saveEditBtn = document.getElementById('saveEditAnamneseBtn');
+
+    if (saveNewBtn) saveNewBtn.addEventListener('click', () => saveAnamnese(false));
+    if (saveEditBtn) saveEditBtn.addEventListener('click', () => saveAnamnese(true));
+
+    // Modal de suppression
+    const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', () => {
+            const modal = document.getElementById('deleteConfirmModal');
+            if (modal) modal.classList.add('hidden');
+        });
+    }
+    if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', deleteAnamnese);
+
+    // Impression
+    const printBtn = document.getElementById('printAnamneseBtn');
+    if (printBtn) printBtn.addEventListener('click', printAnamnese);
+
+    // Édition depuis la vue
+    const editFromViewBtn = document.getElementById('editFromViewBtn');
+    if (editFromViewBtn) {
+        editFromViewBtn.addEventListener('click', () => {
+            if (selectedAnamnese) {
+                closeViewModal();
+                openEditModal(selectedAnamnese);
+            }
+        });
+    }
+
+    // Toggle sidebar
+    const openSidebarBtn = document.getElementById('openSidebarBtn');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    if (openSidebarBtn) openSidebarBtn.addEventListener('click', toggleSidebar);
+    if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', toggleSidebar);
+
+    // Recherche
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterAnamneses, 300);
+        });
+    }
+
+    // Filtres par statut
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            // Mettre à jour l'état actif
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active', 'bg-primary', 'text-white');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+
+            this.classList.remove('bg-gray-100', 'text-gray-700');
+            this.classList.add('active', 'bg-primary', 'text-white');
+
+            // Appliquer le filtre
+            currentFilter = this.dataset.filter;
+            currentPage = 1;
+            filterAnamneses();
+        });
+    });
+
+    // Fermeture des modals en cliquant en dehors
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+            }
+        });
+    });
+
+    // Touches clavier pour les modals
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            // Fermer tous les modals ouverts
+            document.querySelectorAll('.modal').forEach(modal => {
+                if (!modal.classList.contains('hidden')) {
+                    modal.classList.add('hidden');
+                }
+            });
+        }
+    });
+}
+
+// Chargement de la sidebar
+async function loadSidebar() {
+    try {
+        const response = await fetch('/partials/sidebar.html');
+        if (!response.ok) throw new Error('Sidebar not found');
+
+        const html = await response.text();
+        const sidebarContainer = document.getElementById('sidebar-container');
+
+        if (sidebarContainer) {
+            sidebarContainer.innerHTML = html;
+            console.log('✅ Sidebar HTML injectée');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement de la sidebar:', error);
+    }
+}
+
+// Initialisation de la page
+async function initializePage() {
+    try {
+        console.log('🚀 Initialisation de la page anamnèse...');
+
+        // 1. Charger la sidebar
+        await loadSidebar();
+
+        // 2. Configurer la sidebar après chargement
+        setTimeout(() => {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            const openSidebarBtn = document.getElementById('openSidebarBtn');
+            const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+            if (sidebar && mainContent && openSidebarBtn && closeSidebarBtn) {
+                // Event listeners pour le toggle
+                openSidebarBtn.addEventListener('click', toggleSidebar);
+                closeSidebarBtn.addEventListener('click', toggleSidebar);
+
+                // État initial : sidebar ouverte
+                sidebar.classList.remove('sidebar-hidden');
+                mainContent.classList.add('ml-64');
+                openSidebarBtn.classList.add('hidden');
+                openSidebarBtn.style.display = 'none';
+                closeSidebarBtn.classList.remove('hidden');
+
+                console.log('✅ Toggle sidebar configuré');
+            }
+        }, 200);
+
+        // 3. Afficher la date actuelle
+        const currentDateEl = document.getElementById('currentDate');
+        if (currentDateEl) {
+            currentDateEl.textContent = new Date().toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        // 4. Charger les données
+        await loadPatients();
+        await loadAnamneses();
+
+        // 5. Initialiser la recherche de patients
+        initPatientSearch('patientSearch', 'patientOptions', 'patientId', 'patientClear', 'nomPrenom');
+
+        // 6. Initialiser les event listeners
+        initializeEventListeners();
+
+        // 7. Générer le numéro initial pour le nouveau formulaire
+        try {
+            const newNumber = await AnamneseAPI.generateNumber();
+            const numField = document.getElementById('numAnamnese');
+            if (numField) {
+                numField.value = newNumber;
+            }
+        } catch (error) {
+            console.error('Erreur génération numéro initial:', error);
+        }
+
+        // 8. Définir la date du jour par défaut
+        const dateField = document.getElementById('dateEntretien');
+        if (dateField) {
+            dateField.valueAsDate = new Date();
+        }
+
+        console.log('✅ Page anamnèse initialisée avec succès');
+
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'initialisation:', error);
+        showNotification('error', 'Erreur lors de l\'initialisation de la page');
+    }
+}
+
+function verifyEditFormStructure() {
+    const editForm = document.getElementById('editAnamneseForm');
+    if (!editForm) {
+        console.error('❌ Formulaire d\'édition non trouvé');
+        return;
+    }
+
+    console.log('✅ Formulaire d\'édition trouvé');
+
+    // Vérifier les sections avec le bon préfixe
+    const editSections = editForm.querySelectorAll('[id^="edit-section-"]');
+    const editArrows = editForm.querySelectorAll('[id^="edit-arrow-"]');
+    const radios = editForm.querySelectorAll('.custom-radio');
+
+    console.log(`📊 Structure du formulaire d'édition:`);
+    console.log(`  - ${editSections.length} sections edit- trouvées`);
+    console.log(`  - ${editArrows.length} arrows edit- trouvées`);
+    console.log(`  - ${radios.length} radio buttons trouvés`);
+
+    // Lister les IDs spécifiquement
+    console.log(`🏷️ Sections edit-:`);
+    editSections.forEach(section => console.log(`  ✅ ${section.id}`));
+
+    console.log(`🏷️ Arrows edit-:`);
+    editArrows.forEach(arrow => console.log(`  ✅ ${arrow.id}`));
+
+    // Vérifier s'il reste des anciens IDs
+    const oldSections = editForm.querySelectorAll('[id^="section-"]:not([id^="edit-section-"])');
+    const oldArrows = editForm.querySelectorAll('[id^="arrow-"]:not([id^="edit-arrow-"])');
+
+    if (oldSections.length > 0) {
+        console.warn(`⚠️ ${oldSections.length} sections avec anciens IDs trouvées:`);
+        oldSections.forEach(section => console.warn(`  ❌ ${section.id}`));
+    }
+
+    if (oldArrows.length > 0) {
+        console.warn(`⚠️ ${oldArrows.length} arrows avec anciens IDs trouvées:`);
+        oldArrows.forEach(arrow => console.warn(`  ❌ ${arrow.id}`));
+    }
+
+    return {
+        editSections: editSections.length,
+        editArrows: editArrows.length,
+        oldSections: oldSections.length,
+        oldArrows: oldArrows.length
+    };
+}
+
+// Gestion des erreurs globales
+window.addEventListener('error', function(e) {
+    console.error('Erreur JavaScript:', e.error);
+    showNotification('error', 'Une erreur inattendue s\'est produite');
+});
+
+// Gestion des erreurs de promesses non catchées
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('Promesse rejetée non gérée:', e.reason);
+    showNotification('error', 'Erreur de communication avec le serveur');
+});
+
+// Initialiser la page quand le DOM est chargé
+document.addEventListener('DOMContentLoaded', initializePage);
+
+// Exposer les fonctions globalement si nécessaire
+window.toggleSection = toggleSection;
+window.toggleEditSection = toggleEditSection;
+window.showNotification = showNotification;
+window.toggleSidebar = toggleSidebar;
+window.debugEditSections = debugEditSections;
+window.verifyEditFormStructure = verifyEditFormStructure;

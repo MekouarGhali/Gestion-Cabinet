@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    <title>Anamnèse</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script>tailwind.config={theme:{extend:{colors:{primary:'#5b67e0',secondary:'#e0e7ff'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style> :where([class^="ri-"])::before { content: "\f3c2"; } </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="css/anamnese.css">
+    <script src="js/theme.js"></script>
+</head>
+<body>
+<div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Navigation -->
+    <div id="sidebar-container"></div>
+
+    <!-- Main Content -->
+    <main id="mainContent" class="flex-1 flex flex-col overflow-hidden ml-64">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+            <div class="flex items-center">
+                <button id="openSidebarBtn" class="burger-btn text-gray-600 mr-6">
+                    <i class="ri-menu-line text-xl"></i>
+                </button>
+                <h2 class="text-xl font-semibold text-gray-800">Documents > Anamnèse</h2>
+                <div class="ml-6 text-sm text-gray-500" id="currentDate">
+                    <!-- Current date will be inserted by JS -->
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="newAnamneseBtn" class="bg-primary text-white px-4 py-2 rounded-button flex items-center whitespace-nowrap">
+                    <div class="w-5 h-5 flex items-center justify-center mr-2">
+                        <i class="ri-add-line"></i>
+                    </div>
+                    <span>Nouvelle Anamnèse</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Anamnèse Content -->
+        <div class="flex-1 overflow-auto p-6 bg-gray-50">
+            <!-- Search and Filters -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-100">
+                <div class="flex flex-wrap justify-between items-center gap-4">
+                    <div class="flex space-x-4">
+                        <button class="tab-button active px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="all">Toutes</button>
+                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="EN_ATTENTE">En attente</button>
+                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="EN_COURS">En cours</button>
+                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="COMPLETE">Complètes</button>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="Rechercher une anamnèse..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm">
+                        <div class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-500">
+                            <i class="ri-search-line"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Anamnèses Table -->
+            <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                        <tr class="bg-gray-50">
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                N° Anamnèse
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Patient
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date d'entretien
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Motif
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Statut
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Actions
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="anamnesesTableBody">
+                        <!-- Les anamnèses seront ajoutées dynamiquement ici -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="bg-white px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Affichage de <span class="font-medium" id="startRange">1</span> à <span class="font-medium" id="endRange">0</span> sur <span class="font-medium" id="totalAnamneses">0</span> anamnèses
+                    </div>
+                    <div class="flex space-x-2" id="paginationContainer">
+                        <!-- Pagination will be generated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- New Anamnèse Modal -->
+<div id="newAnamneseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-gray-900">Nouvelle Anamnèse</h3>
+            <button id="closeNewAnamneseBtn" class="text-gray-400 hover:text-gray-500">
+                <div class="w-6 h-6 flex items-center justify-center">
+                    <i class="ri-close-line"></i>
+                </div>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+            <form id="newAnamneseForm">
+                <!-- Informations de base -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Numéro d'Anamnèse</label>
+                        <input type="text" id="numAnamnese" name="numAnamnese" class="w-full px-3 py-2 border border-gray-300 rounded-button bg-gray-100" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date de l'entretien <span class="text-red-500">*</span></label>
+                        <input type="date" id="dateEntretien" name="dateEntretien" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+                        <div class="patient-search-container">
+                            <input type="text" id="patientSearch" class="patient-search-input" placeholder="Rechercher un patient..." autocomplete="off">
+                            <div class="patient-search-options" id="patientOptions">
+                                <!-- Options will be populated by JS -->
+                            </div>
+                            <input type="hidden" id="patientId" name="patientId">
+                            <span class="patient-search-clear" id="patientClear"><i class="ri-close-line"></i></span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nom et prénom <span class="text-red-500">*</span></label>
+                        <input type="text" id="nomPrenom" name="nomPrenom" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date de naissance <span class="text-red-500">*</span></label>
+                        <input type="date" id="dateNaissance" name="dateNaissance" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Adressé par</label>
+                        <input type="text" id="adressePar" name="adressePar" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Motif de consultation</label>
+                        <input type="text" id="motifConsultation" name="motifConsultation" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Rééducation antérieure</label>
+                        <input type="text" id="reeducationAnterieure" name="reeducationAnterieure" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                    </div>
+                </div>
+
+                <!-- Sections collapsibles -->
+                <div class="space-y-4">
+                    <!-- Information sur les parents -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('parents')">
+                            <span>Information sur les parents</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-parents"></i>
+                        </button>
+                        <div id="section-parents" class="p-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 class="font-medium text-gray-700 mb-3">Père</h4>
+                                    <div class="space-y-3">
+                                        <input type="text" id="nomPere" name="nomPere" placeholder="Nom et prénom" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                        <input type="number" id="agePere" name="agePere" placeholder="Âge" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                        <input type="text" id="professionPere" name="professionPere" placeholder="Profession" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-700 mb-3">Mère</h4>
+                                    <div class="space-y-3">
+                                        <input type="text" id="nomMere" name="nomMere" placeholder="Nom et prénom" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                        <input type="number" id="ageMere" name="ageMere" placeholder="Âge" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                        <input type="text" id="professionMere" name="professionMere" placeholder="Profession" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Consanguinité</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="consanguinite" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="consanguinite" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Fraterie</label>
+                                    <textarea id="fraterie" name="fraterie" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Nombre de frères et sœurs, âges..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grossesse -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('grossesse')">
+                            <span>Grossesse</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-grossesse"></i>
+                        </button>
+                        <div id="section-grossesse" class="p-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Désirée</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="grossesseDesire" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="grossesseDesire" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Compliquée</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="grossesseCompliquee" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="grossesseCompliquee" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Autres informations</label>
+                                <textarea id="grossesseAutres" name="grossesseAutres" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Précisions supplémentaires..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Accouchement -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('accouchement')">
+                            <span>Accouchement</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-accouchement"></i>
+                        </button>
+                        <div id="section-accouchement" class="p-4 hidden">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">À terme</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="accouchementTerme" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="accouchementTerme" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Prématuré</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="accouchementPremature" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="accouchementPremature" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Post maturé</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="accouchementPostMature" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="accouchementPostMature" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Voie basse</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="accouchementVoieBasse" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="accouchementVoieBasse" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Césarienne</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="accouchementCesarienne" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="accouchementCesarienne" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Cris</label>
+                                    <div class="flex items-center space-x-4">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="accouchementCris" data-value="true"></div>
+                                            <span>Oui</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="accouchementCris" data-value="false"></div>
+                                            <span>Non</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Autres informations</label>
+                                <textarea id="accouchementAutres" name="accouchementAutres" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Précisions supplémentaires..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Allaitement -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('allaitement')">
+                            <span>Allaitement</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-allaitement"></i>
+                        </button>
+                        <div id="section-allaitement" class="p-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Type d'allaitement</label>
+                                    <div class="space-y-2">
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2 checked" data-name="allaitementType" data-value="MATERNEL"></div>
+                                            <span>Maternel</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="allaitementType" data-value="ARTIFICIEL"></div>
+                                            <span>Artificiel</span>
+                                        </label>
+                                        <label class="flex items-center custom-radio-container cursor-pointer">
+                                            <div class="custom-radio mr-2" data-name="allaitementType" data-value="MIXTE"></div>
+                                            <span>Mixte</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Durée (en mois)</label>
+                                    <input type="number" id="allaitementDuree" name="allaitementDuree" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Développement psychomoteur -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('developpement')">
+                            <span>Développement psychomoteur</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-developpement"></i>
+                        </button>
+                        <div id="section-developpement" class="p-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tenue de la tête</label>
+                                    <input type="text" id="tenueTete" name="tenueTete" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Âge ou période">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Position assise</label>
+                                    <input type="text" id="positionAssise" name="positionAssise" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Âge ou période">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Quatre pattes</label>
+                                    <input type="text" id="quatrePattes" name="quatrePattes" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Âge ou période">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Position debout</label>
+                                    <input type="text" id="positionDebout" name="positionDebout" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Âge ou période">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Marche</label>
+                                    <input type="text" id="marche" name="marche" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Âge ou période">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Langage -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('langage')">
+                            <span>Langage</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-langage"></i>
+                        </button>
+                        <div id="section-langage" class="p-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Premier mot</label>
+                                    <input type="text" id="premierMot" name="premierMot" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Âge ou période">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Première phrase</label>
+                                    <input type="text" id="premierePhrase" name="premierePhrase" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Âge ou période">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comportement -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('comportement')">
+                            <span>Comportement</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-comportement"></i>
+                        </button>
+                        <div id="section-comportement" class="p-4 hidden">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Avec la mère</label>
+                                    <textarea id="compMere" name="compMere" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Avec le père</label>
+                                    <textarea id="compPere" name="compPere" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Avec les frères/sœurs</label>
+                                    <textarea id="compFreres" name="compFreres" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">À l'école</label>
+                                    <textarea id="compEcole" name="compEcole" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Autres</label>
+                                    <textarea id="compAutres" name="compAutres" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Autres informations -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('divers')">
+                            <span>Autres informations</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-divers"></i>
+                        </button>
+                        <div id="section-divers" class="p-4 hidden">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Scolarisation</label>
+                                    <input type="text" id="scolarisation" name="scolarisation" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Sommeil</label>
+                                    <input type="text" id="sommeil" name="sommeil" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Appétit</label>
+                                    <input type="text" id="appetit" name="appetit" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Propreté</label>
+                                    <input type="text" id="proprete" name="proprete" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Antécédents -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('antecedents')">
+                            <span>Antécédents</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-antecedents"></i>
+                        </button>
+                        <div id="section-antecedents" class="p-4 hidden">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Antécédents personnels</label>
+                                    <textarea id="antecedentsPersonnels" name="antecedentsPersonnels" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Antécédents familiaux</label>
+                                    <textarea id="antecedentsFamiliaux" name="antecedentsFamiliaux" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observations -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('observations')">
+                            <span>Observations</span>
+                            <i class="ri-arrow-down-s-line transition-transform" id="arrow-observations"></i>
+                        </button>
+                        <div id="section-observations" class="p-4 hidden">
+                            <textarea id="observations" name="observations" rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Autres observations importantes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+            <button id="cancelNewAnamneseBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+                Annuler
+            </button>
+            <button id="saveNewAnamneseBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+                Enregistrer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Anamnèse Modal -->
+<div id="editAnamneseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <h3 class="text-lg font-semibold text-gray-900">Modifier l'Anamnèse</h3>
+                <span id="editAnamneseNumber" class="text-sm text-gray-500"></span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm text-gray-700">Statut:</label>
+                    <select id="editStatut" class="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                        <option value="EN_ATTENTE">En attente</option>
+                        <option value="EN_COURS">En cours</option>
+                        <option value="COMPLETE">Complète</option>
+                    </select>
+                </div>
+                <button id="closeEditAnamneseBtn" class="text-gray-400 hover:text-gray-500">
+                    <div class="w-6 h-6 flex items-center justify-center">
+                        <i class="ri-close-line"></i>
+                    </div>
+                </button>
+            </div>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+            <!-- Le contenu sera copié depuis le modal de création -->
+            <div id="editAnamneseFormContainer"></div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+            <button id="cancelEditAnamneseBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+                Annuler
+            </button>
+            <button id="saveEditAnamneseBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+                Mettre à jour
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- View Anamnèse Modal -->
+<div id="viewAnamneseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <h3 class="text-lg font-semibold text-gray-900">Anamnèse</h3>
+                <span id="viewAnamneseNumber" class="text-sm text-gray-500"></span>
+                <span id="viewAnamneseStatut" class="status-badge"></span>
+            </div>
+            <button id="closeViewAnamneseBtn" class="text-gray-400 hover:text-gray-500">
+                <div class="w-6 h-6 flex items-center justify-center">
+                    <i class="ri-close-line"></i>
+                </div>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+            <div id="viewAnamneseContent" class="space-y-6">
+                <!-- Le contenu sera généré dynamiquement -->
+            </div>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+            <button id="printAnamneseBtn" class="px-4 py-2 bg-gray-600 text-white rounded-button hover:bg-gray-700 whitespace-nowrap">
+                <i class="ri-printer-line mr-2"></i>
+                Imprimer
+            </button>
+            <div class="flex space-x-3">
+                <button id="editFromViewBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+                    <i class="ri-edit-line mr-2"></i>
+                    Modifier
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div class="p-6">
+            <div class="flex items-center justify-center mb-4">
+                <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                    <i class="ri-error-warning-line ri-xl"></i>
+                </div>
+            </div>
+            <h3 class="text-lg font-medium text-center mb-2">Confirmer la suppression</h3>
+            <p class="text-gray-600 text-center mb-6">Êtes-vous sûr de vouloir supprimer cette anamnèse ? Cette action est irréversible.</p>
+            <div class="flex justify-center space-x-4">
+                <button id="cancelDeleteBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+                    Annuler
+                </button>
+                <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded-button hover:bg-red-700 whitespace-nowrap">
+                    Supprimer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Notification -->
+<div id="notification" class="notification">
+    <div class="notification-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        </svg>
+    </div>
+    <div class="notification-content">
+        <div class="notification-title" id="notificationTitle">Succès</div>
+        <div class="notification-message" id="notificationMessage">Opération réussie !</div>
+    </div>
+    <div class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</div>
+</div>
+
+<script src="js/sidebar.js"></script>
+<script src="js/anamnese.js"></script>
+</body>
+</html>

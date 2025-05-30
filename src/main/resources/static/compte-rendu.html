@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <title>Compte Rendu</title>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>tailwind.config={theme:{extend:{colors:{primary:'#5b67e0',secondary:'#e0e7ff'},borderRadius:{'none':'0px','sm':'4px',DEFAULT:'8px','md':'12px','lg':'16px','xl':'20px','2xl':'24px','3xl':'32px','full':'9999px','button':'8px'}}}}</script>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <style> :where([class^="ri-"])::before { content: "\f3c2"; } </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="css/compte-rendu.css">
+  <script src="js/theme.js"></script>
+</head>
+<body>
+<div class="flex h-screen overflow-hidden">
+  <!-- Sidebar Navigation -->
+  <div id="sidebar-container"></div>
+
+  <!-- Main Content -->
+  <main id="mainContent" class="flex-1 flex flex-col overflow-hidden ml-64">
+    <!-- Top Header -->
+    <header class="bg-white border-b border-gray-200 py-4 px-6 flex justify-between items-center">
+      <div class="flex items-center">
+        <button id="openSidebarBtn" class="burger-btn text-gray-600 mr-6">
+          <i class="ri-menu-line text-xl"></i>
+        </button>
+        <h2 class="text-xl font-semibold text-gray-800">Documents > Compte Rendu</h2>
+        <div class="ml-6 text-sm text-gray-500" id="currentDate">
+          <!-- Current date will be inserted by JS -->
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="newCompteRenduBtn" class="bg-primary text-white px-4 py-2 rounded-button flex items-center whitespace-nowrap">
+          <div class="w-5 h-5 flex items-center justify-center mr-2">
+            <i class="ri-add-line"></i>
+          </div>
+          <span>Nouveau Compte Rendu</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Compte Rendu Content -->
+    <div class="flex-1 overflow-auto p-6 bg-gray-50">
+      <!-- Search and Filters -->
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-100">
+        <div class="flex flex-wrap justify-between items-center gap-4">
+          <div class="flex space-x-4">
+            <button class="tab-button active px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="all">
+              <i class="ri-list-check-2 mr-2"></i>
+              Tous
+            </button>
+            <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="EN_COURS">
+              <i class="ri-time-line mr-2"></i>
+              En cours
+            </button>
+            <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="TERMINE">
+              <i class="ri-check-line mr-2"></i>
+              Terminé
+            </button>
+          </div>
+          <div class="relative">
+            <input type="text" id="searchInput" placeholder="Rechercher un compte rendu..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm">
+            <div class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 flex items-center justify-center text-gray-500">
+              <i class="ri-search-line"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comptes Rendus Table -->
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead>
+            <tr class="bg-gray-50">
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                N° Compte Rendu
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Patient
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date du Bilan
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Niveau Scolaire
+              </th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Statut
+              </th>
+              <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200" id="comptesRendusTableBody">
+            <!-- Les comptes rendus seront ajoutés dynamiquement ici -->
+            </tbody>
+          </table>
+        </div>
+        <div class="bg-white px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div class="text-sm text-gray-700">
+            Affichage de <span class="font-medium" id="startRange">1</span> à <span class="font-medium" id="endRange">0</span> sur <span class="font-medium" id="totalComptesRendus">0</span> comptes rendus
+          </div>
+          <div class="flex space-x-2" id="paginationContainer">
+            <!-- Pagination will be generated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- New Compte Rendu Modal -->
+<div id="newCompteRenduModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Nouveau Compte Rendu</h3>
+      <button id="closeNewCompteRenduBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1">
+      <form id="newCompteRenduForm">
+        <!-- Informations de base -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Numéro de Compte Rendu</label>
+            <input type="text" id="numCompteRendu" name="numCompteRendu" class="w-full px-3 py-2 border border-gray-300 rounded-button bg-gray-100" readonly>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+            <div class="patient-search-container">
+              <input type="text" id="patientSearch" class="patient-search-input" placeholder="Rechercher un patient..." autocomplete="off">
+              <div class="patient-search-options" id="patientOptions">
+                <!-- Options will be populated by JS -->
+              </div>
+              <input type="hidden" id="patientId" name="patientId">
+              <span class="patient-search-clear" id="patientClear"><i class="ri-close-line"></i></span>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date du Bilan <span class="text-red-500">*</span></label>
+            <input type="date" id="dateBilan" name="dateBilan" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Nom et prénom <span class="text-red-500">*</span></label>
+            <input type="text" id="nomPatient" name="nomPatient" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Date de naissance <span class="text-red-500">*</span></label>
+            <input type="date" id="dateNaissance" name="dateNaissance" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Niveau scolaire <span class="text-red-500">*</span></label>
+            <input type="text" id="niveauScolaire" name="niveauScolaire" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" required>
+          </div>
+        </div>
+
+        <!-- Tests utilisés -->
+        <div class="mb-6 border border-gray-200 rounded-lg overflow-hidden">
+          <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('tests')">
+            <span>Tests utilisés</span>
+            <i class="ri-arrow-down-s-line transition-transform" id="arrow-tests"></i>
+          </button>
+          <div id="section-tests" class="p-4 hidden">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="GOODENOUGH"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">GOODENOUGH</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="SOMATOGNOSIE DE BERGES"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">SOMATOGNOSIE DE BERGES</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="Piaget"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">Piaget</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="l'image de Rey"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">L'image de Rey</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="la figure de Rey"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">La figure de Rey</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="Naville"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">Naville</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="rythme de Mira Stimbak"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">Rythme de Mira Stimbak</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="graphisme BHK"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">Graphisme BHK</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="des cloches"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">Des cloches</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="d'attention et de concentration de STROOP"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">STROOP</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="latéralité de BERGES"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">Latéralité de BERGES</label>
+              </div>
+              <div class="flex items-center">
+                <div class="custom-checkbox mr-2" data-test="Charlop-Atwell"></div>
+                <label class="text-sm text-gray-700 cursor-pointer">Charlop-Atwell</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contenu du compte rendu -->
+        <div class="space-y-4">
+          <!-- Présentation -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('presentation')">
+              <span>Présentation</span>
+              <i class="ri-arrow-down-s-line transition-transform" id="arrow-presentation"></i>
+            </button>
+            <div id="section-presentation" class="p-4 hidden">
+              <textarea id="presentation" name="presentation" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Description de la présentation de l'enfant..."></textarea>
+            </div>
+          </div>
+
+          <!-- Anamnèse -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('anamnese')">
+              <span>Anamnèse</span>
+              <i class="ri-arrow-down-s-line transition-transform" id="arrow-anamnese"></i>
+            </button>
+            <div id="section-anamnese" class="p-4 hidden">
+              <textarea id="anamnese" name="anamnese" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Détails de l'anamnèse..."></textarea>
+            </div>
+          </div>
+
+          <!-- Comportement -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('comportement')">
+              <span>Comportement</span>
+              <i class="ri-arrow-down-s-line transition-transform" id="arrow-comportement"></i>
+            </button>
+            <div id="section-comportement" class="p-4 hidden">
+              <textarea id="comportement" name="comportement" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Description du comportement..."></textarea>
+            </div>
+          </div>
+
+          <!-- Bilan Psychomoteur -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('bilan')">
+              <span>Bilan Psychomoteur</span>
+              <i class="ri-arrow-down-s-line transition-transform" id="arrow-bilan"></i>
+            </button>
+            <div id="section-bilan" class="p-4 hidden">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Schéma corporel</label>
+                  <textarea id="schemaCorporel" name="schemaCorporel" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Évaluation du schéma corporel..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Espace</label>
+                  <textarea id="espace" name="espace" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Évaluation de l'espace..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Temps et rythmes</label>
+                  <textarea id="tempsRythmes" name="tempsRythmes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Évaluation du temps et des rythmes..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Latéralité</label>
+                  <textarea id="lateralite" name="lateralite" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Évaluation de la latéralité..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Graphisme</label>
+                  <textarea id="graphisme" name="graphisme" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Évaluation du graphisme..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Fonction cognitive</label>
+                  <textarea id="fonctionCognitive" name="fonctionCognitive" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Évaluation des fonctions cognitives..."></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Équipement moteur</label>
+                  <textarea id="equipementMoteur" name="equipementMoteur" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Évaluation de l'équipement moteur..."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conclusion -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('conclusion')">
+              <span>Conclusion</span>
+              <i class="ri-arrow-down-s-line transition-transform" id="arrow-conclusion"></i>
+            </button>
+            <div id="section-conclusion" class="p-4 hidden">
+              <textarea id="conclusion" name="conclusion" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Conclusion du bilan..."></textarea>
+            </div>
+          </div>
+
+          <!-- Projet thérapeutique -->
+          <div class="border border-gray-200 rounded-lg overflow-hidden">
+            <button type="button" class="w-full bg-gray-50 px-4 py-3 text-left font-medium text-gray-700 hover:bg-gray-100 flex justify-between items-center" onclick="toggleSection('projetTherapeutique')">
+              <span>Projet thérapeutique</span>
+              <i class="ri-arrow-down-s-line transition-transform" id="arrow-projetTherapeutique"></i>
+            </button>
+            <div id="section-projetTherapeutique" class="p-4 hidden">
+              <textarea id="projetTherapeutique" name="projetTherapeutique" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Détails du projet thérapeutique..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Observations -->
+        <div class="mt-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Observations</label>
+          <textarea id="observations" name="observations" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary" placeholder="Observations supplémentaires..."></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+      <button id="cancelNewCompteRenduBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+        Annuler
+      </button>
+      <button id="saveNewCompteRenduBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+        Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Compte Rendu Modal -->
+<div id="editCompteRenduModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <h3 class="text-lg font-semibold text-gray-900">Modifier le Compte Rendu</h3>
+        <span id="editCompteRenduNumber" class="text-sm text-gray-500"></span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2">
+          <label class="text-sm text-gray-700">Statut:</label>
+          <select id="editStatut" class="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+            <option value="EN_COURS">En cours</option>
+            <option value="TERMINE">Terminé</option>
+          </select>
+        </div>
+        <button id="closeEditCompteRenduBtn" class="text-gray-400 hover:text-gray-500">
+          <div class="w-6 h-6 flex items-center justify-center">
+            <i class="ri-close-line"></i>
+          </div>
+        </button>
+      </div>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1">
+      <!-- Le contenu sera copié depuis le modal de création -->
+      <div id="editCompteRenduFormContainer"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+      <button id="cancelEditCompteRenduBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+        Annuler
+      </button>
+      <button id="saveEditCompteRenduBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+        Mettre à jour
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- View Compte Rendu Modal -->
+<div id="viewCompteRenduModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <h3 class="text-lg font-semibold text-gray-900">Compte Rendu</h3>
+        <span id="viewCompteRenduNumber" class="text-sm text-gray-500"></span>
+        <span id="viewCompteRenduStatut" class="status-badge"></span>
+      </div>
+      <button id="closeViewCompteRenduBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1">
+      <div id="viewCompteRenduContent" class="space-y-6">
+        <!-- Le contenu sera généré dynamiquement -->
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+      <button id="printCompteRenduBtn" class="px-4 py-2 bg-gray-600 text-white rounded-button hover:bg-gray-700 whitespace-nowrap">
+        <i class="ri-printer-line mr-2"></i>
+        Imprimer
+      </button>
+      <div class="flex space-x-3">
+        <button id="editFromViewBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+          <i class="ri-edit-line mr-2"></i>
+          Modifier
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div class="p-6">
+      <div class="flex items-center justify-center mb-4">
+        <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+          <i class="ri-error-warning-line ri-xl"></i>
+        </div>
+      </div>
+      <h3 class="text-lg font-medium text-center mb-2">Confirmer la suppression</h3>
+      <p class="text-gray-600 text-center mb-6">Êtes-vous sûr de vouloir supprimer ce compte rendu ? Cette action est irréversible.</p>
+      <div class="flex justify-center space-x-4">
+        <button id="cancelDeleteBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+          Annuler
+        </button>
+        <button id="confirmDeleteBtn" class="px-4 py-2 bg-red-600 text-white rounded-button hover:bg-red-700 whitespace-nowrap">
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Patient Selection Modal -->
+<div id="patientSelectionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Sélectionner un Patient</h3>
+      <button id="closePatientSelectionBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1">
+      <div class="mb-4">
+        <input type="text" id="patientSearchModal" placeholder="Rechercher un patient..." class="w-full px-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+      </div>
+      <div class="space-y-2" id="patientsList">
+        <!-- Liste des patients sera générée ici -->
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+      <button id="cancelPatientSelectionBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+        Annuler
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Tests Selection Modal -->
+<div id="testsSelectionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[80vh] overflow-hidden flex flex-col">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="text-lg font-semibold text-gray-900">Sélectionner les Tests</h3>
+      <button id="closeTestsSelectionBtn" class="text-gray-400 hover:text-gray-500">
+        <div class="w-6 h-6 flex items-center justify-center">
+          <i class="ri-close-line"></i>
+        </div>
+      </button>
+    </div>
+    <div class="p-6 overflow-y-auto flex-1">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="testsAvailableList">
+        <!-- Liste des tests disponibles sera générée ici -->
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+      <div class="text-sm text-gray-600">
+        <span id="selectedTestsCount">0</span> test(s) sélectionné(s)
+      </div>
+      <div class="flex space-x-3">
+        <button id="clearAllTestsBtn" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-button hover:bg-gray-50 whitespace-nowrap">
+          Tout désélectionner
+        </button>
+        <button id="confirmTestsSelectionBtn" class="px-4 py-2 bg-primary text-white rounded-button hover:bg-primary/90 whitespace-nowrap">
+          Confirmer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Success Notification -->
+<div id="notification" class="notification">
+  <div class="notification-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+    </svg>
+  </div>
+  <div class="notification-content">
+    <div class="notification-title" id="notificationTitle">Succès</div>
+    <div class="notification-message" id="notificationMessage">Opération réussie !</div>
+  </div>
+  <div class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</div>
+</div>
+
+<script src="js/sidebar.js"></script>
+<script src="js/compte-rendu.js"></script>
+</body>
+</html>

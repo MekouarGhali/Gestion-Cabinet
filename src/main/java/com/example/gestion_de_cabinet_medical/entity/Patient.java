@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // ✅ AJOUT ICI
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Patient {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,12 +33,77 @@ public class Patient {
     private String avatar; // Initiales
     private LocalDate derniereVisite;
 
-    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY)
+    // ✅ CORRECTIONS: Toutes les collections en @JsonIgnore pour éviter les cycles
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JsonIgnore
     private List<Facture> factures;
 
-    // ✅ CORRECTION : Ignorer aussi les rendez-vous pour éviter les cycles
-    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JsonIgnore
     private List<RendezVous> rendezVous;
+
+    // ✅ CORRECTION CRITIQUE: JsonIgnore sur anamneses
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Anamnese> anamneses;
+
+    // ✅ NOUVELLE RELATION: Comptes rendus du patient
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<CompteRendu> comptesRendus;
+
+    // === MÉTHODES UTILITAIRES (sans @JsonIgnore) ===
+
+    public String getNomComplet() {
+        return (prenom != null ? prenom : "") + " " + (nom != null ? nom : "");
+    }
+
+    public Integer getAge() {
+        if (dateNaissance != null) {
+            return LocalDate.now().getYear() - dateNaissance.getYear();
+        }
+        return null;
+    }
+
+    public Integer getSeancesRestantes() {
+        int prevues = seancesPrevues != null ? seancesPrevues : 0;
+        int effectuees = seancesEffectuees != null ? seancesEffectuees : 0;
+        return Math.max(0, prevues - effectuees);
+    }
+
+    public boolean isActif() {
+        return "actif".equalsIgnoreCase(statut);
+    }
+
+    public boolean isInactif() {
+        return "inactif".equalsIgnoreCase(statut);
+    }
+
+    public boolean isNouveau() {
+        return "nouveau".equalsIgnoreCase(statut);
+    }
+
+    // ✅ CORRECTION: Méthodes utilitaires sans accès direct aux collections
+    public boolean hasAnamneses() {
+        // Ne pas accéder directement à la collection pour éviter lazy loading
+        return false; // Sera calculé côté service si nécessaire
+    }
+
+    public int getNombreAnamneses() {
+        // Ne pas accéder directement à la collection
+        return 0; // Sera calculé côté service si nécessaire
+    }
+
+    public boolean hasComptesRendus() {
+        // Ne pas accéder directement à la collection pour éviter lazy loading
+        return false; // Sera calculé côté service si nécessaire
+    }
+
+    public int getNombreComptesRendus() {
+        // Ne pas accéder directement à la collection
+        return 0; // Sera calculé côté service si nécessaire
+    }
+
+    // ✅ SUPPRESSION: Pas d'accès direct aux collections
+    // car cela force le chargement et peut créer des cycles de sérialisation
 }
