@@ -147,6 +147,12 @@ function formatDate(dateString) {
     return date.toLocaleDateString('fr-FR');
 }
 
+function formatDateForInput(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+}
+
 function getAvatarColor(index) {
     const colors = [
         { bg: 'bg-indigo-200', text: 'text-indigo-700' },
@@ -495,7 +501,13 @@ function addButtonEventListeners() {
 
             if (patient) {
                 selectedPatient = patient;
-                openPatientRecords(patient);
+                // Appeler la fonction du module patient-records
+                if (typeof openPatientRecords === 'function') {
+                    await openPatientRecords(patient);
+                } else {
+                    console.error('Module patient-records non chargé');
+                    showNotification('error', 'Erreur lors de l\'ouverture du dossier patient');
+                }
             }
         });
     });
@@ -524,58 +536,7 @@ function addButtonEventListeners() {
     });
 }
 
-// Modals
-function openPatientRecords(patient) {
-    document.getElementById('patientModalName').textContent = `${patient.prenom || ''} ${patient.nom || ''}`;
-    document.getElementById('patientModalId').textContent = `ID: ${patient.id}`;
-    document.getElementById('patientModalAvatar').textContent = patient.avatar || '';
-
-    const avatarColor = getAvatarColor(0);
-    document.getElementById('patientModalAvatar').className = `w-10 h-10 rounded-full ${avatarColor.bg} flex items-center justify-center ${avatarColor.text} mr-3`;
-
-    const total = patient.seancesPrevues || 1;
-    const done = patient.seancesEffectuees || 0;
-    const progressPercent = Math.round((done / total) * 100);
-
-    document.getElementById('patientRecordSessionsProgress').style.width = `${progressPercent}%`;
-    document.getElementById('patientRecordSessionsText').textContent = `${done}/${total} séances`;
-    document.getElementById('patientRecordSessions').textContent = `${total} séances`;
-
-    const sessionHistoryContainer = document.getElementById('patientSessionHistory');
-    sessionHistoryContainer.innerHTML = `
-        <div class="p-4 text-center text-gray-500">
-            Aucune séance enregistrée.
-        </div>
-    `;
-
-    document.getElementById('anamneseList').innerHTML = `
-        <div class="p-4 text-center text-gray-500">
-            Aucune anamnèse enregistrée.
-        </div>
-    `;
-
-    document.getElementById('compteRenduList').innerHTML = `
-        <div class="p-4 text-center text-gray-500">
-            Aucun compte rendu enregistré.
-        </div>
-    `;
-
-    document.querySelectorAll('.records-tab-button').forEach(btn => {
-        btn.classList.remove('active', 'border-primary', 'text-primary');
-        btn.classList.add('border-transparent', 'text-gray-500');
-    });
-
-    document.querySelectorAll('.records-tab-content').forEach(content => {
-        content.classList.add('hidden');
-    });
-
-    document.querySelector('.records-tab-button[data-tab="sessions"]').classList.add('active', 'border-primary', 'text-primary');
-    document.querySelector('.records-tab-button[data-tab="sessions"]').classList.remove('border-transparent', 'text-gray-500');
-    document.getElementById('sessionsTab').classList.remove('hidden');
-
-    document.getElementById('patientRecordsModal').classList.remove('hidden');
-}
-
+// Modals (CRUD seulement)
 function openEditPatientModal(patient) {
     document.getElementById('editPatientId').value = patient.id;
     document.getElementById('editFirstName').value = patient.prenom || '';
@@ -788,7 +749,11 @@ async function addSessionToPatient() {
         showNotification('success', `${additionalSessions} séance(s) ajoutée(s) au total avec succès.`);
 
         await loadPatients();
-        openPatientRecords(updatedPatient);
+
+        // Rouvrir le dossier patient si le module est disponible
+        if (typeof openPatientRecords === 'function') {
+            await openPatientRecords(updatedPatient);
+        }
     } catch (error) {
         showNotification('error', 'Erreur lors de l\'ajout de séances');
     }
@@ -885,7 +850,18 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.error("❌ Erreur lors du chargement de la sidebar :", error);
     }
 
-    // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
+    // 2. Charger le module patient-records
+    try {
+        const script = document.createElement('script');
+        script.src = 'js/patient-records.js';
+        script.async = true;
+        document.head.appendChild(script);
+        console.log('✅ Module patient-records chargé');
+    } catch (error) {
+        console.error("❌ Erreur lors du chargement du module patient-records :", error);
+    }
+
+    // 3. Attendre que la sidebar soit chargée puis configurer les event listeners
     setTimeout(() => {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
@@ -908,7 +884,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }, 200);
 
-    // 3. Configurer la date actuelle
+    // 4. Configurer la date actuelle
     const currentDate = document.getElementById('currentDate');
     if (currentDate) {
         const today = new Date();
@@ -920,7 +896,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    // 4. Configurer les filtres patients
+    // 5. Configurer les filtres patients
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', function () {
             // Mettre à jour l'apparence des boutons
@@ -938,7 +914,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     });
 
-    // 5. Configurer la recherche
+    // 6. Configurer la recherche
     let searchTimeout;
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
@@ -951,7 +927,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    // 6. Configurer le dropdown de tri
+    // 7. Configurer le dropdown de tri
     const sortDropdownBtn = document.getElementById('sortDropdownBtn');
     const sortDropdown = document.getElementById('sortDropdown');
 
@@ -980,7 +956,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    // 7. Configurer les vues liste/grille
+    // 8. Configurer les vues liste/grille
     const listViewBtn = document.getElementById('listViewBtn');
     const gridViewBtn = document.getElementById('gridViewBtn');
     const tableView = document.getElementById('tableView');
@@ -1015,7 +991,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    // 8. Initialiser les modals et charger les patients
+    // 9. Initialiser les modals et charger les patients
     setupModalEventListeners();
     await loadPatients();
 
@@ -1097,42 +1073,6 @@ function setupModalEventListeners() {
         confirmDeleteBtn.addEventListener('click', deletePatient);
     }
 
-    // Modal dossiers patient
-    const patientRecordsModal = document.getElementById('patientRecordsModal');
-    const closeRecordsModalBtn = document.getElementById('closeRecordsModalBtn');
-
-    if (closeRecordsModalBtn && patientRecordsModal) {
-        closeRecordsModalBtn.addEventListener('click', function() {
-            patientRecordsModal.classList.add('hidden');
-        });
-    }
-
-    // Onglets des dossiers
-    document.querySelectorAll('.records-tab-button').forEach(button => {
-        button.addEventListener('click', function() {
-            const tabName = this.dataset.tab;
-
-            // Réinitialiser tous les onglets
-            document.querySelectorAll('.records-tab-button').forEach(btn => {
-                btn.classList.remove('active', 'border-primary', 'text-primary');
-                btn.classList.add('border-transparent', 'text-gray-500');
-            });
-
-            document.querySelectorAll('.records-tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-
-            // Activer l'onglet sélectionné
-            this.classList.add('active', 'border-primary', 'text-primary');
-            this.classList.remove('border-transparent', 'text-gray-500');
-
-            const tabContent = document.getElementById(tabName + 'Tab');
-            if (tabContent) {
-                tabContent.classList.remove('hidden');
-            }
-        });
-    });
-
     // Modal ajout séances
     const addSessionBtn = document.getElementById('addSessionBtn');
     const addSessionsModal = document.getElementById('addSessionsModal');
@@ -1186,20 +1126,4 @@ function setupModalEventListeners() {
             this.classList.add('checked');
         });
     });
-
-    // Boutons nouvelles anamnèse et compte rendu
-    const newAnamneseBtn = document.getElementById('newAnamneseForPatientBtn');
-    const newCompteRenduBtn = document.getElementById('newCompteRenduForPatientBtn');
-
-    if (newAnamneseBtn) {
-        newAnamneseBtn.addEventListener('click', function() {
-            showNotification('info', 'Redirection vers le formulaire d\'anamnèse');
-        });
-    }
-
-    if (newCompteRenduBtn) {
-        newCompteRenduBtn.addEventListener('click', function() {
-            showNotification('info', 'Redirection vers le formulaire de compte rendu');
-        });
-    }
 }
