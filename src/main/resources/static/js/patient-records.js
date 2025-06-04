@@ -895,6 +895,12 @@ function generatePrintableAnamneseContent(anamnese) {
         <head>
             <title>Anamnèse ${anamnese.numAnamnese}</title>
             <style>
+                .preview-content,
+                .preview-content * {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow-wrap: break-word !important;
+                }
                 body { 
                     font-family: 'Times New Roman', serif; 
                     font-size: 12pt; 
@@ -947,6 +953,12 @@ function generatePrintableCompteRenduContent(compteRendu) {
         <head>
             <title>Compte Rendu ${compteRendu.numCompteRendu}</title>
             <style>
+                .preview-content,
+                .preview-content * {
+                    white-space: normal !important;
+                    word-break: break-word !important;
+                    overflow-wrap: break-word !important;
+                }
                 body { 
                     font-family: 'Times New Roman', serif; 
                     font-size: 12pt; 
@@ -1007,6 +1019,7 @@ function generatePrintableCompteRenduContent(compteRendu) {
                 .whitespace-pre-line {
                     white-space: pre-line;
                 }
+                
             </style>
         </head>
         <body>
@@ -1203,6 +1216,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const style = document.createElement('style');
         style.id = 'patientRecordsStyles';
         style.textContent = `
+            .preview-content,
+            .preview-content * {
+                white-space: normal !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+            }
             .modal {
                 position: fixed;
                 top: 0;

@@ -1,5 +1,6 @@
 package com.example.gestion_de_cabinet_medical.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
@@ -49,6 +50,11 @@ public class Facture {
     @JsonIgnoreProperties({"facture", "hibernateLazyInitializer", "handler"})
     @Builder.Default
     private List<Prestation> prestations = new ArrayList<>();
+
+    // ✅ NOUVELLE RELATION: Revenu associé à cette facture
+    @OneToOne(mappedBy = "facture", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Revenu revenu;
 
     // Méthodes utilitaires
     public String getNomCompletPatient() {

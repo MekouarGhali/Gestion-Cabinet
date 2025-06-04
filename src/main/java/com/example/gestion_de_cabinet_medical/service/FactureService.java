@@ -22,6 +22,7 @@ public class FactureService {
 
     private final FactureRepository factureRepository;
     private final PatientRepository patientRepository;
+    private final RevenuService revenuService; // Ajout de la dépendance
 
     // CRUD Operations
     public List<Facture> getAll() {
@@ -83,8 +84,20 @@ public class FactureService {
             facture.setIce("003663065000094");
         }
 
-        log.info("Création facture {} pour patient {}", facture.getNumero(), patient.getNom());
-        return factureRepository.save(facture);
+        // Sauvegarder la facture
+        Facture savedFacture = factureRepository.save(facture);
+
+        // Créer automatiquement un revenu associé
+        try {
+            revenuService.createFromFacture(savedFacture);
+            log.info("Revenu créé automatiquement pour la facture {}", savedFacture.getNumero());
+        } catch (Exception e) {
+            log.error("Erreur lors de la création automatique du revenu pour la facture {}: {}",
+                    savedFacture.getNumero(), e.getMessage());
+        }
+
+        log.info("Création facture {} pour patient {}", savedFacture.getNumero(), patient.getNom());
+        return savedFacture;
     }
 
     public Facture update(Long id, Facture factureDetails) {
@@ -136,14 +149,27 @@ public class FactureService {
                 .sum();
         facture.setMontantTotal(montantTotal);
 
+        // Sauvegarder la facture mise à jour
+        Facture updatedFacture = factureRepository.save(facture);
+
+        // Mettre à jour le revenu associé si nécessaire
+        try {
+            revenuService.createFromFacture(updatedFacture); // Cette méthode gère déjà l'existence
+            log.info("Revenu mis à jour pour la facture {}", updatedFacture.getNumero());
+        } catch (Exception e) {
+            log.error("Erreur lors de la mise à jour du revenu pour la facture {}: {}",
+                    updatedFacture.getNumero(), e.getMessage());
+        }
+
         log.info("Modification facture {} pour patient {}", facture.getNumero(), facture.getPatient().getNom());
-        return factureRepository.save(facture);
+        return updatedFacture;
     }
 
     public void delete(Long id) {
         Facture facture = getById(id);
         log.info("Suppression facture {} pour patient {}", facture.getNumero(), facture.getPatient().getNom());
         factureRepository.delete(facture);
+        // Note: Le revenu associé sera supprimé automatiquement par la contrainte CASCADE
     }
 
     // Recherche et filtrage
@@ -240,5 +266,12 @@ public class FactureService {
 
     public boolean isNumeroExists(String numero) {
         return factureRepository.existsByNumero(numero);
+    }
+
+    // Méthode pour synchroniser les revenus avec les factures existantes
+    @Transactional
+    public void synchroniserRevenus() {
+        List<Facture> allFactures = factureRepository.findAll();
+        revenuService.synchroniserRevenus(allFactures);
     }
 }
