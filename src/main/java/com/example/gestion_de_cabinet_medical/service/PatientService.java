@@ -40,18 +40,35 @@ public class PatientService {
     }
 
     public Patient update(Long id, Patient patientDetails) {
-        Patient patient = repository.findById(id).orElseThrow();
+        Patient patient = repository.findById(id).orElseThrow(() ->
+                new RuntimeException("Patient introuvable avec l'ID: " + id));
 
+        // ✅ Mise à jour sécurisée
         patient.setNom(patientDetails.getNom());
         patient.setPrenom(patientDetails.getPrenom());
         patient.setSexe(patientDetails.getSexe());
         patient.setTelephone(patientDetails.getTelephone());
         patient.setPathologie(patientDetails.getPathologie());
         patient.setDateNaissance(patientDetails.getDateNaissance());
-        patient.setSeancesPrevues(patientDetails.getSeancesPrevues());
-        patient.setSeancesEffectuees(patientDetails.getSeancesEffectuees());
 
-        // LOGIQUE COMBINÉE : Switch + Séances
+        // ✅ CORRECTION : Gestion des null pour les séances
+        patient.setSeancesPrevues(patientDetails.getSeancesPrevues() != null ? patientDetails.getSeancesPrevues() : patient.getSeancesPrevues());
+        patient.setSeancesEffectuees(patientDetails.getSeancesEffectuees() != null ? patientDetails.getSeancesEffectuees() : patient.getSeancesEffectuees());
+
+        // ✅ CORRECTION : Initialiser à 0 si null
+        if (patient.getSeancesEffectuees() == null) {
+            patient.setSeancesEffectuees(0);
+        }
+        if (patient.getSeancesPrevues() == null) {
+            patient.setSeancesPrevues(0);
+        }
+
+        // Mise à jour de la dernière visite
+        if (patientDetails.getDerniereVisite() != null) {
+            patient.setDerniereVisite(patientDetails.getDerniereVisite());
+        }
+
+        // ✅ LOGIQUE COMBINÉE : Switch + Séances (comme dans le code original)
         if (patientDetails.getStatut() != null && patientDetails.getStatut().equals("inactif")) {
             // Si le statut envoyé est "inactif" (switch activé), on respecte ce choix
             patient.setStatut("inactif");
@@ -76,9 +93,13 @@ public class PatientService {
     }
 
     private void updatePatientStatus(Patient patient) {
-        if (patient.getSeancesEffectuees() >= patient.getSeancesPrevues()) {
+        // ✅ CORRECTION : Gestion des valeurs null
+        Integer effectuees = patient.getSeancesEffectuees() != null ? patient.getSeancesEffectuees() : 0;
+        Integer prevues = patient.getSeancesPrevues() != null ? patient.getSeancesPrevues() : 0;
+
+        if (effectuees >= prevues && prevues > 0) {
             patient.setStatut("inactif");
-        } else if (patient.getSeancesEffectuees() > 0) {
+        } else if (effectuees > 0) {
             patient.setStatut("actif");
         } else {
             patient.setStatut("nouveau");

@@ -12,6 +12,8 @@ import java.util.List;
 @Repository
 public interface RevenuRepository extends JpaRepository<Revenu, Long> {
 
+    // ===== MÉTHODES EXISTANTES =====
+
     // Rechercher par patient
     List<Revenu> findByPatientIdOrderByDateTransactionDescIdDesc(Long patientId);
 
@@ -116,4 +118,96 @@ public interface RevenuRepository extends JpaRepository<Revenu, Long> {
 
     // Trouver par facture
     Revenu findByFactureId(Long factureId);
+
+    // ===== NOUVELLES MÉTHODES POUR LE DASHBOARD =====
+
+    // Revenus d'une date spécifique
+    @Query("SELECT SUM(r.montant) FROM Revenu r WHERE r.dateTransaction = :date AND r.statut = 'PAYE'")
+    Double getTotalRevenueByDate(@Param("date") LocalDate date);
+
+    // Revenus d'aujourd'hui
+    @Query("SELECT SUM(r.montant) FROM Revenu r WHERE r.dateTransaction = CURRENT_DATE AND r.statut = 'PAYE'")
+    Double getTodayRevenue();
+
+    // Compter les revenus d'aujourd'hui
+    @Query("SELECT COUNT(r) FROM Revenu r WHERE r.dateTransaction = CURRENT_DATE")
+    Long countTodayRevenus();
+
+    // Revenus payés d'aujourd'hui
+    @Query("SELECT COUNT(r) FROM Revenu r WHERE r.dateTransaction = CURRENT_DATE AND r.statut = 'PAYE'")
+    Long countTodayPaidRevenus();
+
+    // Moyenne des revenus journaliers du mois
+    @Query("SELECT AVG(daily.total) FROM (" +
+            "SELECT SUM(r.montant) as total FROM Revenu r " +
+            "WHERE YEAR(r.dateTransaction) = :year AND MONTH(r.dateTransaction) = :month AND r.statut = 'PAYE' " +
+            "GROUP BY r.dateTransaction" +
+            ") daily")
+    Double getAverageDailyRevenueForMonth(@Param("year") int year, @Param("month") int month);
+
+    // Revenus par jour de la semaine
+    @Query("SELECT DAYOFWEEK(r.dateTransaction) as dayOfWeek, SUM(r.montant) as total " +
+            "FROM Revenu r " +
+            "WHERE r.statut = 'PAYE' AND r.dateTransaction >= :startDate AND r.dateTransaction <= :endDate " +
+            "GROUP BY DAYOFWEEK(r.dateTransaction) " +
+            "ORDER BY DAYOFWEEK(r.dateTransaction)")
+    List<Object[]> getRevenueByDayOfWeek(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    // Top 5 des jours avec le plus de revenus ce mois
+    @Query("SELECT r.dateTransaction, SUM(r.montant) as total " +
+            "FROM Revenu r " +
+            "WHERE YEAR(r.dateTransaction) = :year AND MONTH(r.dateTransaction) = :month AND r.statut = 'PAYE' " +
+            "GROUP BY r.dateTransaction " +
+            "ORDER BY total DESC LIMIT 5")
+    List<Object[]> getTop5RevenueDays(@Param("year") int year, @Param("month") int month);
+
+    // Revenus par type de mutuelle
+    @Query("SELECT r.mutuelle, COUNT(r), SUM(r.montant) FROM Revenu r WHERE r.statut = 'PAYE' GROUP BY r.mutuelle")
+    List<Object[]> getStatsByMutuelle();
+
+    // Evolution des revenus (comparaison avec période précédente)
+    @Query("SELECT " +
+            "SUM(CASE WHEN r.dateTransaction BETWEEN :currentStart AND :currentEnd THEN r.montant ELSE 0 END) as currentPeriod, " +
+            "SUM(CASE WHEN r.dateTransaction BETWEEN :previousStart AND :previousEnd THEN r.montant ELSE 0 END) as previousPeriod " +
+            "FROM Revenu r WHERE r.statut = 'PAYE'")
+    List<Object[]> getRevenueComparison(@Param("currentStart") LocalDate currentStart,
+                                        @Param("currentEnd") LocalDate currentEnd,
+                                        @Param("previousStart") LocalDate previousStart,
+                                        @Param("previousEnd") LocalDate previousEnd);
+
+    // Derniers revenus ajoutés
+    @Query("SELECT r FROM Revenu r ORDER BY r.createdAt DESC LIMIT :limit")
+    List<Revenu> findLatestRevenus(@Param("limit") int limit);
+
+    // Revenus par patient le mieux payé
+    @Query("SELECT r.nomCompletPatient, SUM(r.montant) as total " +
+            "FROM Revenu r " +
+            "WHERE r.statut = 'PAYE' " +
+            "GROUP BY r.nomCompletPatient, r.patient.id " +
+            "ORDER BY total DESC LIMIT :limit")
+    List<Object[]> getTopPayingPatients(@Param("limit") int limit);
+
+    // Montant moyen par transaction
+    @Query("SELECT AVG(r.montant) FROM Revenu r WHERE r.statut = 'PAYE'")
+    Double getAverageTransactionAmount();
+
+    // Taux de recouvrement (pourcentage de revenus payés)
+    @Query("SELECT " +
+            "COUNT(CASE WHEN r.statut = 'PAYE' THEN 1 END) * 100.0 / COUNT(r) as tauxRecouvrement " +
+            "FROM Revenu r")
+    Double getRecoveryRate();
+
+    // Revenus en attente les plus anciens
+    @Query("SELECT r FROM Revenu r WHERE r.statut = 'EN_ATTENTE' ORDER BY r.dateTransaction ASC LIMIT :limit")
+    List<Revenu> getOldestPendingRevenus(@Param("limit") int limit);
+
+    // Statistiques détaillées pour le dashboard
+    @Query("SELECT " +
+            "COUNT(r) as totalTransactions, " +
+            "SUM(r.montant) as totalMontant, " +
+            "AVG(r.montant) as moyenneMontant, " +
+            "SUM(CASE WHEN r.statut = 'PAYE' THEN r.montant ELSE 0 END) as montantPaye, " +
+            "SUM(CASE WHEN r.statut = 'EN_ATTENTE' THEN r.montant ELSE 0 END) as montantEnAttente " +
+            "FROM Revenu r WHERE r.dateTransaction = :date")
+    List<Object[]> getDailyRevenueStats(@Param("date") LocalDate date);
 }

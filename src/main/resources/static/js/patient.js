@@ -494,9 +494,14 @@ function createPagination(totalPages) {
 }
 
 function addButtonEventListeners() {
+    console.log('🔧 Ajout des event listeners pour les boutons...');
+
+    // Boutons "Voir le dossier"
     document.querySelectorAll('.view-patient-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const patientId = this.dataset.id;
+            console.log('👁️ Clic sur voir dossier pour patient ID:', patientId);
+
             const patient = await PatientAPI.getById(patientId);
 
             if (patient) {
@@ -505,39 +510,81 @@ function addButtonEventListeners() {
                 if (typeof openPatientRecords === 'function') {
                     await openPatientRecords(patient);
                 } else {
-                    console.error('Module patient-records non chargé');
+                    console.error('Module patient-records non chargé ou fonction openPatientRecords non disponible');
                     showNotification('error', 'Erreur lors de l\'ouverture du dossier patient');
                 }
             }
         });
     });
 
+    // Boutons "Modifier"
     document.querySelectorAll('.edit-patient-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const patientId = this.dataset.id;
-            const patient = await PatientAPI.getById(patientId);
+            console.log('✏️ Clic sur modifier pour patient ID:', patientId);
 
-            if (patient) {
-                openEditPatientModal(patient);
+            try {
+                const patient = await PatientAPI.getById(patientId);
+                console.log('📋 Patient récupéré:', patient);
+
+                if (patient) {
+                    openEditPatientModal(patient);
+                } else {
+                    console.error('❌ Patient non trouvé');
+                    showNotification('error', 'Patient introuvable');
+                }
+            } catch (error) {
+                console.error('❌ Erreur lors de la récupération du patient:', error);
+                showNotification('error', 'Erreur lors du chargement du patient');
             }
         });
     });
 
+    // Boutons "Supprimer"
     document.querySelectorAll('.delete-patient-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const patientId = this.dataset.id;
+            console.log('🗑️ Clic sur supprimer pour patient ID:', patientId);
+
             const patient = await PatientAPI.getById(patientId);
 
             if (patient) {
                 selectedPatient = patient;
-                document.getElementById('deleteConfirmModal').classList.remove('hidden');
+                const deleteModal = document.getElementById('deleteConfirmModal');
+                if (deleteModal) {
+                    deleteModal.classList.remove('hidden');
+                    // Force l'affichage avec du CSS direct et z-index élevé
+                    deleteModal.style.display = 'flex';
+                    deleteModal.style.opacity = '1';
+                    deleteModal.style.zIndex = '9999';
+                    deleteModal.style.position = 'fixed';
+                    deleteModal.style.top = '0';
+                    deleteModal.style.left = '0';
+                    deleteModal.style.width = '100%';
+                    deleteModal.style.height = '100%';
+                    console.log('🗑️ Modal suppression ouvert');
+                }
             }
         });
+    });
+
+    console.log('✅ Event listeners ajoutés:', {
+        view: document.querySelectorAll('.view-patient-btn').length,
+        edit: document.querySelectorAll('.edit-patient-btn').length,
+        delete: document.querySelectorAll('.delete-patient-btn').length
     });
 }
 
 // Modals (CRUD seulement)
 function openEditPatientModal(patient) {
+    console.log('✏️ Ouverture modal édition pour:', patient.prenom, patient.nom);
+
+    const editModal = document.getElementById('editPatientModal');
+    if (!editModal) {
+        console.error('❌ Modal editPatientModal introuvable');
+        return;
+    }
+
     document.getElementById('editPatientId').value = patient.id;
     document.getElementById('editFirstName').value = patient.prenom || '';
     document.getElementById('editLastName').value = patient.nom || '';
@@ -566,7 +613,18 @@ function openEditPatientModal(patient) {
         activeSwitch.classList.remove('checked');
     }
 
-    document.getElementById('editPatientModal').classList.remove('hidden');
+    console.log('📱 Ouverture du modal...');
+    editModal.classList.remove('hidden');
+    // Force l'affichage avec du CSS direct et z-index élevé
+    editModal.style.display = 'flex';
+    editModal.style.opacity = '1';
+    editModal.style.zIndex = '9999';
+    editModal.style.position = 'fixed';
+    editModal.style.top = '0';
+    editModal.style.left = '0';
+    editModal.style.width = '100%';
+    editModal.style.height = '100%';
+    console.log('✅ Modal édition ouvert');
 }
 
 function openAddSessionsModal(patient) {
@@ -664,7 +722,9 @@ async function saveNewPatient() {
 
     try {
         await PatientAPI.create(patientData);
-        document.getElementById('newPatientModal').classList.add('hidden');
+        const newModal = document.getElementById('newPatientModal');
+        newModal.classList.add('hidden');
+        newModal.style.display = 'none';
         showNotification('success', 'Patient ajouté avec succès!');
         await loadPatients();
     } catch (error) {
@@ -703,7 +763,9 @@ async function saveEditedPatient() {
 
     try {
         const updatedPatient = await PatientAPI.update(patientId, patientData);
-        document.getElementById('editPatientModal').classList.add('hidden');
+        const editModal = document.getElementById('editPatientModal');
+        editModal.classList.add('hidden');
+        editModal.style.display = 'none';
         showNotification('success', 'Patient modifié avec succès!');
         selectedPatient = updatedPatient;
         await loadPatients();
@@ -717,7 +779,9 @@ async function deletePatient() {
 
     try {
         await PatientAPI.delete(selectedPatient.id);
-        document.getElementById('deleteConfirmModal').classList.add('hidden');
+        const deleteModal = document.getElementById('deleteConfirmModal');
+        deleteModal.classList.add('hidden');
+        deleteModal.style.display = 'none';
         showNotification('success', 'Patient supprimé avec succès!');
         await loadPatients();
     } catch (error) {
@@ -848,17 +912,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.log('✅ Sidebar chargée');
     } catch (error) {
         console.error("❌ Erreur lors du chargement de la sidebar :", error);
-    }
-
-    // 2. Charger le module patient-records
-    try {
-        const script = document.createElement('script');
-        script.src = 'js/patient-records.js';
-        script.async = true;
-        document.head.appendChild(script);
-        console.log('✅ Module patient-records chargé');
-    } catch (error) {
-        console.error("❌ Erreur lors du chargement du module patient-records :", error);
     }
 
     // 3. Attendre que la sidebar soit chargée puis configurer les event listeners
@@ -999,6 +1052,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 });
 
 function setupModalEventListeners() {
+    console.log('⚙️ Configuration des event listeners pour les modals...');
+
     // Modal nouveau patient
     const newPatientBtn = document.getElementById('newPatientBtn');
     const newPatientModal = document.getElementById('newPatientModal');
@@ -1006,22 +1061,49 @@ function setupModalEventListeners() {
     const cancelNewPatientBtn = document.getElementById('cancelNewPatientBtn');
     const saveNewPatientBtn = document.getElementById('saveNewPatientBtn');
 
+    console.log('🔍 Éléments trouvés:', {
+        newPatientBtn: !!newPatientBtn,
+        newPatientModal: !!newPatientModal,
+        closeNewPatientBtn: !!closeNewPatientBtn,
+        cancelNewPatientBtn: !!cancelNewPatientBtn,
+        saveNewPatientBtn: !!saveNewPatientBtn
+    });
+
     if (newPatientBtn && newPatientModal) {
         newPatientBtn.addEventListener('click', function() {
+            console.log('➕ Clic sur nouveau patient - Ouverture modal');
+            console.log('Modal state before:', newPatientModal.classList.contains('hidden'));
             newPatientModal.classList.remove('hidden');
+            // Force l'affichage avec du CSS direct et z-index élevé
+            newPatientModal.style.display = 'flex';
+            newPatientModal.style.opacity = '1';
+            newPatientModal.style.zIndex = '9999';
+            newPatientModal.style.position = 'fixed';
+            newPatientModal.style.top = '0';
+            newPatientModal.style.left = '0';
+            newPatientModal.style.width = '100%';
+            newPatientModal.style.height = '100%';
+            console.log('Modal state after:', newPatientModal.classList.contains('hidden'));
             resetForm('newPatientForm');
         });
+        console.log('✅ Bouton nouveau patient configuré');
+    } else {
+        console.error('❌ Bouton nouveau patient ou modal introuvable');
     }
 
     if (closeNewPatientBtn) {
         closeNewPatientBtn.addEventListener('click', function() {
+            console.log('❌ Fermeture modal nouveau patient');
             newPatientModal.classList.add('hidden');
+            newPatientModal.style.display = 'none';
         });
     }
 
     if (cancelNewPatientBtn) {
         cancelNewPatientBtn.addEventListener('click', function() {
+            console.log('🚫 Annulation nouveau patient');
             newPatientModal.classList.add('hidden');
+            newPatientModal.style.display = 'none';
         });
     }
 
@@ -1038,13 +1120,17 @@ function setupModalEventListeners() {
 
     if (closeEditPatientBtn && editPatientModal) {
         closeEditPatientBtn.addEventListener('click', function() {
+            console.log('❌ Fermeture modal édition');
             editPatientModal.classList.add('hidden');
+            editPatientModal.style.display = 'none';
         });
     }
 
     if (cancelEditPatientBtn && editPatientModal) {
         cancelEditPatientBtn.addEventListener('click', function() {
+            console.log('🚫 Annulation édition');
             editPatientModal.classList.add('hidden');
+            editPatientModal.style.display = 'none';
         });
     }
 
@@ -1065,12 +1151,17 @@ function setupModalEventListeners() {
 
     if (cancelDeleteBtn && deleteConfirmModal) {
         cancelDeleteBtn.addEventListener('click', function() {
+            console.log('🚫 Annulation suppression');
             deleteConfirmModal.classList.add('hidden');
+            deleteConfirmModal.style.display = 'none';
         });
     }
 
     if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', deletePatient);
+        confirmDeleteBtn.addEventListener('click', function() {
+            console.log('✅ Confirmation suppression');
+            deletePatient();
+        });
     }
 
     // Modal ajout séances

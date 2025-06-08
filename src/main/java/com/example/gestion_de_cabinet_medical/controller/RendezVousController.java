@@ -77,7 +77,20 @@ public class RendezVousController {
     public ResponseEntity<List<RendezVous>> getByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateDebut,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFin) {
-        return ResponseEntity.ok(rendezVousService.getByDateRange(dateDebut, dateFin));
+
+        System.out.println("🔍 API date-range appelée:");
+        System.out.println("📅 dateDebut: " + dateDebut);
+        System.out.println("📅 dateFin: " + dateFin);
+
+        List<RendezVous> rendezVous = rendezVousService.getByDateRange(dateDebut, dateFin);
+
+        System.out.println("📊 Nombre de RDV trouvés: " + rendezVous.size());
+        rendezVous.forEach(rdv -> {
+            System.out.println("  - " + rdv.getPatient().getPrenom() + " " + rdv.getPatient().getNom() +
+                    " le " + rdv.getDateRendezVous() + " à " + rdv.getHeureDebut());
+        });
+
+        return ResponseEntity.ok(rendezVous);
     }
 
     // Recherche par patient
@@ -118,6 +131,12 @@ public class RendezVousController {
     @GetMapping("/today")
     public ResponseEntity<List<RendezVous>> getTodayAppointments() {
         return ResponseEntity.ok(rendezVousService.getTodayAppointments());
+    }
+
+    // ✅ NOUVEAU ENDPOINT : Tous les RDV d'aujourd'hui (pour les modals)
+    @GetMapping("/today/all")
+    public ResponseEntity<List<RendezVous>> getAllTodayAppointments() {
+        return ResponseEntity.ok(rendezVousService.getAllTodayAppointments());
     }
 
     // Rendez-vous de la semaine courante

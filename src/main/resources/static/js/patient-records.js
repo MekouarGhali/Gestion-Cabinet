@@ -55,6 +55,51 @@ class PatientRecordsCompteRenduAPI {
     }
 }
 
+// API pour les séances (ajout manquant)
+class PatientRecordsSeanceAPI {
+    static async getByPatient(patientId) {
+        try {
+            const response = await fetch(`${PATIENT_RECORDS_API_BASE_URL}/seances/patient/${patientId}`);
+            if (!response.ok) throw new Error('Erreur lors du chargement des séances');
+            return await response.json();
+        } catch (error) {
+            console.error('Erreur API getByPatient seances:', error);
+            return [];
+        }
+    }
+}
+
+async function loadPatientSeances(patientId) {
+    try {
+        console.log('📋 Chargement des séances pour patient ID:', patientId);
+        const seances = await PatientRecordsSeanceAPI.getByPatient(patientId);
+        const sessionHistoryContainer = document.getElementById('patientSessionHistory');
+
+        if (!sessionHistoryContainer) return;
+
+        if (seances.length === 0) {
+            sessionHistoryContainer.innerHTML = `<div class="p-4 text-center text-gray-500">Aucune séance enregistrée.</div>`;
+        } else {
+            sessionHistoryContainer.innerHTML = seances.map(seance => `
+                <div class="p-4 hover:bg-gray-50 transition">
+                    <div class="flex justify-between mb-2">
+                        <div class="font-medium text-gray-900">Séance du ${new Date(seance.dateSeance).toLocaleDateString('fr-FR')}</div>
+                        <div class="text-sm text-gray-500">${seance.createdBy || 'Thérapeute'}</div>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-3">
+                        <p>${seance.observations || 'Aucune observation'}</p>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        ${seance.heureDebut} - ${seance.heureFin}
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('❌ Erreur chargement séances:', error);
+    }
+}
+
 // Utilitaires spécifiques aux dossiers (alignés sur patient_js_updated.js)
 function formatDateSafe(dateString) {
     if (!dateString) return 'N/A';
@@ -184,15 +229,8 @@ async function openPatientRecords(patient) {
         if (progressText) progressText.textContent = `${done}/${total} séances`;
         if (sessionsText) sessionsText.textContent = `${total} séances`;
 
-        // Initialiser l'historique des séances
-        const sessionHistoryContainer = document.getElementById('patientSessionHistory');
-        if (sessionHistoryContainer) {
-            sessionHistoryContainer.innerHTML = `
-                <div class="p-4 text-center text-gray-500">
-                    Aucune séance enregistrée.
-                </div>
-            `;
-        }
+        // Charger l'historique des séances
+        await loadPatientSeances(patient.id);
 
         // Charger les anamnèses
         await loadPatientAnamneses(patient.id);
@@ -1372,5 +1410,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Exporter les fonctions principales pour utilisation externe
 window.openPatientRecords = openPatientRecords;
+window.loadPatientSeances = loadPatientSeances;
 
 console.log('📄 Module patient-records chargé avec succès');

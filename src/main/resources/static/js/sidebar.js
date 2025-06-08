@@ -49,7 +49,7 @@ function renderDefaultSidebar() {
             <nav class="flex-1 overflow-y-auto py-4">
                 <ul>
                     <li class="mb-1">
-                        <a href="/menu" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
+                        <a href="/dashboard.html" class="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50">
                             <div class="w-6 h-6 flex items-center justify-center mr-3 text-gray-500">
                                 <i class="ri-dashboard-line"></i>
                             </div>

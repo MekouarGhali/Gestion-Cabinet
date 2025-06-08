@@ -105,8 +105,15 @@ public class RendezVousService {
     }
 
     public List<RendezVous> getByDateRange(LocalDate dateDebut, LocalDate dateFin) {
-        return rendezVousRepository.findByDateRendezVousBetweenOrderByDateRendezVousAscHeureDebutAsc(
+        System.out.println("🔍 Service getByDateRange:");
+        System.out.println("📅 Recherche du " + dateDebut + " au " + dateFin);
+
+        List<RendezVous> results = rendezVousRepository.findByDateRendezVousBetweenOrderByDateRendezVousAscHeureDebutAsc(
                 dateDebut, dateFin);
+
+        System.out.println("📊 Repository a retourné: " + results.size() + " RDV");
+
+        return results;
     }
 
     public List<RendezVous> getByPatient(Long patientId) {
@@ -127,7 +134,13 @@ public class RendezVousService {
 
     // Méthodes spécialisées
     public List<RendezVous> getTodayAppointments() {
+        // ✅ Retourne uniquement les RDV actifs (non terminés, non annulés)
         return rendezVousRepository.findTodayAppointments();
+    }
+
+    // ✅ NOUVELLE MÉTHODE : Tous les RDV d'aujourd'hui (pour les modals)
+    public List<RendezVous> getAllTodayAppointments() {
+        return rendezVousRepository.findAllTodayAppointments();
     }
 
     public List<RendezVous> getCurrentWeekAppointments() {

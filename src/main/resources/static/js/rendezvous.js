@@ -34,16 +34,43 @@ class RendezVousAPI {
 
     static async getByWeek(startDate) {
         try {
-            const endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 5); // Lundi à Samedi
+            console.log(`🔍 getByWeek appelé avec startDate: ${startDate.toDateString()}`);
 
-            const startDateStr = formatDateForAPI(startDate);
-            const endDateStr = formatDateForAPI(endDate);
+            const weekStart = new Date(startDate);
+            weekStart.setHours(0, 0, 0, 0);
 
-            console.log(`🔍 API Call: date-range?dateDebut=${startDateStr}&dateFin=${endDateStr}`);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 5);
 
-            const response = await fetch(`${API_BASE_URL}/rendez-vous/date-range?dateDebut=${startDateStr}&dateFin=${endDateStr}`);
-            if (!response.ok) throw new Error('Erreur lors du chargement de la semaine');
+            console.log(`📅 Avant formatage:`);
+            console.log(`  weekStart: ${weekStart.toDateString()} (${weekStart.toISOString()})`);
+            console.log(`  weekEnd: ${weekEnd.toDateString()} (${weekEnd.toISOString()})`);
+
+            const startDateStr = formatDateForAPI(weekStart);
+            const endDateStr = formatDateForAPI(weekEnd);
+
+            console.log(`📅 Après formatage:`);
+            console.log(`  startDateStr: ${startDateStr}`);
+            console.log(`  endDateStr: ${endDateStr}`);
+
+            // ✅ VÉRIFICATION CRITIQUE : Comparer ce qu'on calcule vs ce qu'on envoie
+            if (startDateStr !== '2025-06-02' || endDateStr !== '2025-06-07') {
+                console.error(`❌ PROBLÈME DE FORMATAGE DÉTECTÉ !`);
+                console.error(`❌ Attendu: 2025-06-02 à 2025-06-07`);
+                console.error(`❌ Obtenu: ${startDateStr} à ${endDateStr}`);
+            } else {
+                console.log(`✅ Formatage correct !`);
+            }
+
+            const url = `${API_BASE_URL}/rendez-vous/date-range?dateDebut=${startDateStr}&dateFin=${endDateStr}`;
+            console.log(`🌐 URL finale: ${url}`);
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                console.error(`❌ HTTP Error: ${response.status} ${response.statusText}`);
+                throw new Error('Erreur lors du chargement de la semaine');
+            }
 
             const data = await response.json();
             console.log(`📡 API Response: ${data.length} RDV reçus`);
@@ -177,7 +204,19 @@ class PatientAPI {
 
 // Utilitaires
 function formatDateForAPI(date) {
-    return date.toISOString().split('T')[0];
+    console.log(`🔍 formatDateForAPI appelé avec:`, date);
+    console.log(`📅 Date input: ${date.toDateString()}`);
+    console.log(`📅 Date ISO: ${date.toISOString()}`);
+
+    // ✅ MÉTHODE SÛRE : Utiliser les getters pour éviter les problèmes de timezone
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // +1 car getMonth() retourne 0-11
+    const day = String(date.getDate()).padStart(2, '0');
+
+    const formatted = `${year}-${month}-${day}`;
+    console.log(`📅 Date formatée: ${formatted}`);
+
+    return formatted;
 }
 
 function formatDateForDisplay(dateString) {
@@ -215,13 +254,40 @@ function calculateSeancesRestantes(patient) {
 async function loadRendezVous() {
     try {
         console.log(`🔄 Chargement des RDV pour la semaine du ${formatDateForAPI(currentWeekStart)}`);
+        console.log(`📅 currentWeekStart raw:`, currentWeekStart);
 
         // ✅ Normaliser les dates pour l'API
         const weekStart = new Date(currentWeekStart);
         weekStart.setHours(0, 0, 0, 0);
 
+        console.log(`📅 weekStart normalisé:`, weekStart.toDateString());
+
+        // ✅ AJOUT: Vérifier aussi en récupérant TOUS les RDV pour debug
+        console.log(`🔍 Test: récupération de TOUS les RDV pour debug...`);
+        const tousLesRdv = await RendezVousAPI.getAll();
+        console.log(`📊 Total RDV dans la base: ${tousLesRdv.length}`);
+
+        // Filtrer manuellement pour voir s'il y a des RDV du 7 juin
+        const rdvDu7 = tousLesRdv.filter(rdv => rdv.dateRendezVous === '2025-06-07');
+        console.log(`📅 RDV du 2025-06-07: ${rdvDu7.length}`, rdvDu7);
+
+        // Filtrer pour la semaine courante
+        const rdvSemaine = tousLesRdv.filter(rdv => {
+            const rdvDate = rdv.dateRendezVous;
+            return rdvDate >= formatDateForAPI(weekStart) &&
+                rdvDate <= formatDateForAPI(new Date(weekStart.getTime() + 5 * 24 * 60 * 60 * 1000));
+        });
+        console.log(`📅 RDV de la semaine (filtrés manuellement): ${rdvSemaine.length}`, rdvSemaine);
+
+        // Appel API normal
         currentRendezVous = await RendezVousAPI.getByWeek(weekStart);
-        console.log(`📊 ${currentRendezVous.length} RDV trouvés pour la semaine:`, currentRendezVous);
+        console.log(`📊 ${currentRendezVous.length} RDV trouvés via API pour la semaine:`, currentRendezVous);
+
+        // Si l'API ne retourne rien mais qu'on a des RDV manuellement, utiliser le filtre manuel
+        if (currentRendezVous.length === 0 && rdvSemaine.length > 0) {
+            console.log(`🔧 Utilisation du filtre manuel car API ne retourne rien`);
+            currentRendezVous = rdvSemaine;
+        }
 
         // Afficher les détails de chaque RDV
         currentRendezVous.forEach((rdv, index) => {
@@ -255,6 +321,8 @@ function updateWeekView() {
     const weekStart = new Date(currentWeekStart);
     weekStart.setHours(0, 0, 0, 0);
 
+    console.log(`📅 Génération semaine du ${weekStart.toDateString()}`);
+
     // Génération des colonnes des jours
     daysOfWeek.forEach((day, index) => {
         const dayDate = new Date(weekStart);
@@ -265,6 +333,8 @@ function updateWeekView() {
         dayColumn.id = `day-${dateIds[index]}`;
         dayColumn.dataset.date = formatDateForAPI(dayDate);
 
+        console.log(`📋 Création colonne: day-${dateIds[index]} pour ${dayDate.toDateString()} (${formatDateForAPI(dayDate)})`);
+
         const dayHeader = document.createElement('div');
         dayHeader.className = 'day-header';
 
@@ -273,6 +343,7 @@ function updateWeekView() {
         today.setHours(0, 0, 0, 0);
         if (dayDate.getTime() === today.getTime()) {
             dayHeader.classList.add('today-highlight');
+            console.log(`🎯 Jour actuel: ${day}`);
         }
 
         const combinedDate = document.createElement('div');
@@ -307,6 +378,12 @@ function updateWeekView() {
         `${weekStart.getDate()} ${getMonthName(weekStart.getMonth())} - ${weekEnd.getDate()} ${getMonthName(weekEnd.getMonth())} ${weekStart.getFullYear()}`;
 
     console.log(`📅 Semaine mise à jour: ${formatDateForAPI(weekStart)} à ${formatDateForAPI(weekEnd)}`);
+
+    // Debug: Lister toutes les colonnes créées
+    setTimeout(() => {
+        const allColumns = document.querySelectorAll('[id^="day-"]');
+        console.log('📋 Colonnes créées:', Array.from(allColumns).map(col => col.id));
+    }, 100);
 }
 
 function updateCalendarView() {
@@ -327,43 +404,68 @@ function updateCalendarView() {
 }
 
 function createAppointmentElement(rendezVous) {
-    // ✅ CORRECTION: Créer la date sans forcer de timezone pour éviter les décalages
-    const dateObj = new Date(rendezVous.dateRendezVous);
+    console.log(`🔍 Traitement RDV: ${rendezVous.patient.prenom} ${rendezVous.patient.nom} - Date: ${rendezVous.dateRendezVous}`);
+
+    // ✅ CORRECTION CRITIQUE: Créer la date sans problème de timezone
+    const dateString = rendezVous.dateRendezVous; // "2025-06-07"
+    const [year, month, day] = dateString.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day); // Mois 0-indexé
+
     const dayOfWeek = dateObj.getDay(); // 0=Dimanche, 1=Lundi, etc.
+    console.log(`📅 Date obj: ${dateObj.toDateString()}, Day of week: ${dayOfWeek}`);
 
     // Ajuster pour notre affichage de semaine (Lundi=0 à Samedi=5)
-    let dayIndex = dayOfWeek === 0 ? 5 : dayOfWeek - 1;
+    let dayIndex = dayOfWeek === 0 ? 5 : dayOfWeek - 1; // Dimanche devient Samedi (index 5)
+    console.log(`📊 Day index calculé: ${dayIndex}`);
 
-    // ✅ CORRECTION: Vérifier si la date est dans la semaine courante avec des dates normalisées
+    // ✅ CORRECTION: Vérifier si la date est dans la semaine courante
     const weekStart = new Date(currentWeekStart);
     weekStart.setHours(0, 0, 0, 0);
+
     const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 5); // Samedi
+    weekEnd.setDate(weekStart.getDate() + 5); // Lundi à Samedi
     weekEnd.setHours(23, 59, 59, 999);
 
-    // Normaliser la date du RDV
-    const rdvDate = new Date(rendezVous.dateRendezVous);
+    // Normaliser la date du RDV pour comparaison
+    const rdvDate = new Date(year, month - 1, day);
     rdvDate.setHours(12, 0, 0, 0); // Midi pour éviter les problèmes de timezone
 
-    // Debug pour voir les dates
-    console.log(`📅 RDV: ${rendezVous.dateRendezVous}, Patient: ${rendezVous.patient.prenom} ${rendezVous.patient.nom}`);
-    console.log(`📅 Semaine: ${weekStart.toISOString().split('T')[0]} à ${weekEnd.toISOString().split('T')[0]}`);
-    console.log(`📅 Date RDV normalisée: ${rdvDate.toISOString().split('T')[0]}`);
-    console.log(`📅 Dans la semaine? ${rdvDate >= weekStart && rdvDate <= weekEnd}`);
+    console.log(`📅 RDV Date: ${rdvDate.toDateString()}`);
+    console.log(`📅 Week Start: ${weekStart.toDateString()}`);
+    console.log(`📅 Week End: ${weekEnd.toDateString()}`);
+    console.log(`📅 Is in week? ${rdvDate >= weekStart && rdvDate <= weekEnd}`);
 
+    // Vérifier si le RDV est dans la semaine courante
     if (rdvDate < weekStart || rdvDate > weekEnd) {
         console.log(`❌ RDV hors de la semaine courante`);
-        return; // Pas dans la semaine courante
+        return;
+    }
+
+    // Vérifier que l'index du jour est valide (0-5 pour Lundi-Samedi)
+    if (dayIndex < 0 || dayIndex > 5) {
+        console.log(`❌ Index de jour invalide: ${dayIndex} pour ${dateString}`);
+        return;
     }
 
     const dayColumns = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    const dayColumn = document.getElementById(`day-${dayColumns[dayIndex]}`);
+    const dayColumnId = `day-${dayColumns[dayIndex]}`;
+    const dayColumn = document.getElementById(dayColumnId);
+
+    console.log(`🎯 Recherche colonne: ${dayColumnId}`);
+
     if (!dayColumn) {
-        console.log(`❌ Colonne ${dayColumns[dayIndex]} introuvable pour index ${dayIndex}`);
+        console.log(`❌ Colonne ${dayColumnId} introuvable pour index ${dayIndex}`);
+        // Debug: afficher toutes les colonnes disponibles
+        const allColumns = document.querySelectorAll('[id^="day-"]');
+        console.log('📋 Colonnes disponibles:', Array.from(allColumns).map(col => col.id));
         return;
     }
 
     const timeSlotsContainer = dayColumn.querySelector('.relative');
+    if (!timeSlotsContainer) {
+        console.log(`❌ Container .relative introuvable dans ${dayColumnId}`);
+        return;
+    }
 
     // Calculer la position basée sur l'heure
     const startTime = rendezVous.heureDebut;
@@ -374,7 +476,7 @@ function createAppointmentElement(rendezVous) {
     const endHour = parseInt(endTime.split(':')[0]);
     const endMinute = parseInt(endTime.split(':')[1]);
 
-    const startPosition = (startHour - 8) * 60 + startMinute;
+    const startPosition = (startHour - 8) * 60 + startMinute; // 60px par heure, base 8h
     const duration = (endHour - startHour) * 60 + (endMinute - startMinute);
 
     // Choisir la couleur basée sur le type de rendez-vous
@@ -385,7 +487,7 @@ function createAppointmentElement(rendezVous) {
     appointment.style.top = `${startPosition}px`;
     appointment.style.height = `${duration}px`;
 
-    // Ajouter une indication si c'est un RDV récurrent - SUPPRESSION DU STATUT
+    // Ajouter une indication si c'est un RDV récurrent
     const recurringIcon = rendezVous.estRecurrent ? ' 🔄' : '';
 
     appointment.innerHTML = `
@@ -406,7 +508,7 @@ function createAppointmentElement(rendezVous) {
     });
 
     timeSlotsContainer.appendChild(appointment);
-    console.log(`✅ RDV ajouté au calendrier: ${rendezVous.patient.prenom} ${rendezVous.patient.nom} (Récurrent: ${rendezVous.estRecurrent})`);
+    console.log(`✅ RDV ajouté au calendrier dans ${dayColumnId}: ${rendezVous.patient.prenom} ${rendezVous.patient.nom} (${startTime}-${endTime})`);
 }
 
 function selectAppointment(appointmentElement, rendezVousData) {
@@ -1148,6 +1250,20 @@ function toggleSidebar() {
     }
 }
 
+function getMonday(date = new Date()) {
+    console.log(`🔍 getMonday appelé avec: ${date.toDateString()}`);
+
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Ajuster pour que lundi = 1
+    const monday = new Date(date.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+
+    console.log(`📅 Lundi calculé: ${monday.toDateString()}`);
+    console.log(`📅 Lundi formaté API: ${formatDateForAPI(monday)}`);
+
+    return monday;
+}
+
 // Initialisation principale
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('🚀 Initialisation de la page rendez-vous...');
@@ -1198,24 +1314,31 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // 4. Initialiser la semaine courante (lundi de cette semaine)
-    currentWeekStart.setDate(currentWeekStart.getDate() - (currentWeekStart.getDay() === 0 ? 6 : currentWeekStart.getDay() - 1));
+    console.log('📅 Calcul du lundi de la semaine courante...');
+    currentWeekStart = getMonday(new Date());
+    console.log(`📅 currentWeekStart défini à: ${currentWeekStart.toDateString()}`);
 
     // 5. Configurer la navigation de semaine
     document.getElementById('prevWeekBtn').addEventListener('click', function() {
+        console.log('⬅️ Semaine précédente');
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+        console.log(`📅 Nouvelle semaine: ${currentWeekStart.toDateString()}`);
         updateWeekView();
         loadRendezVous();
     });
 
     document.getElementById('nextWeekBtn').addEventListener('click', function() {
+        console.log('➡️ Semaine suivante');
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+        console.log(`📅 Nouvelle semaine: ${currentWeekStart.toDateString()}`);
         updateWeekView();
         loadRendezVous();
     });
 
     document.getElementById('todayBtn').addEventListener('click', function() {
-        currentWeekStart = new Date();
-        currentWeekStart.setDate(currentWeekStart.getDate() - (currentWeekStart.getDay() === 0 ? 6 : currentWeekStart.getDay() - 1));
+        console.log('🎯 Retour à aujourd\'hui');
+        currentWeekStart = getMonday(new Date());
+        console.log(`📅 Semaine courante: ${currentWeekStart.toDateString()}`);
         updateWeekView();
         loadRendezVous();
     });
@@ -1428,3 +1551,21 @@ function setupModalEventListeners() {
         });
     });
 }
+
+console.log('🧪 TEST de getMonday:');
+const today = new Date();
+console.log(`Aujourd'hui: ${today.toDateString()}`);
+const monday = getMonday(today);
+console.log(`Lundi de cette semaine: ${monday.toDateString()}`);
+const saturday = new Date(monday);
+saturday.setDate(monday.getDate() + 5);
+console.log(`Samedi de cette semaine: ${saturday.toDateString()}`);
+console.log(`Plage API attendue: ${formatDateForAPI(monday)} à ${formatDateForAPI(saturday)}`);
+console.log('🧪 TEST formatDateForAPI:');
+const testMonday = new Date(2025, 5, 2); // 2 juin 2025 (mois 0-indexé)
+console.log(`Test date: ${testMonday.toDateString()}`);
+console.log(`Format résultat: ${formatDateForAPI(testMonday)}`);
+
+const testSaturday = new Date(2025, 5, 7); // 7 juin 2025
+console.log(`Test date: ${testSaturday.toDateString()}`);
+console.log(`Format résultat: ${formatDateForAPI(testSaturday)}`);
