@@ -112,8 +112,8 @@ public interface AnamneseRepository extends JpaRepository<Anamnese, Long> {
     @Query("SELECT a FROM Anamnese a ORDER BY a.dateCreation DESC LIMIT 10")
     List<Anamnese> findRecentAnamneses();
 
-    // Anamnèses incomplètes (en attente ou en cours)
-    @Query("SELECT a FROM Anamnese a WHERE a.statut IN ('EN_ATTENTE', 'EN_COURS') " +
+    // ✅ MODIFICATION : Anamnèses incomplètes (en cours seulement) pour correspondre aux nouveaux statuts
+    @Query("SELECT a FROM Anamnese a WHERE a.statut = 'EN_COURS' " +
             "ORDER BY a.dateCreation ASC")
     List<Anamnese> findIncompleteAnamneses();
 

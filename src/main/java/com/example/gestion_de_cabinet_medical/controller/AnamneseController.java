@@ -271,7 +271,7 @@ public class AnamneseController {
         }
     }
 
-    // === GESTION DES STATUTS ===
+    // === GESTION DES STATUTS (MODIFIÉS) ===
 
     @PatchMapping("/{id}/statut")
     public ResponseEntity<?> updateStatut(
@@ -319,10 +319,11 @@ public class AnamneseController {
         }
     }
 
-    @PatchMapping("/{id}/marquer-complete")
-    public ResponseEntity<Anamnese> marquerComplete(@PathVariable Long id) {
+    // ✅ MODIFICATION : Renommé pour correspondre aux statuts harmonisés
+    @PatchMapping("/{id}/marquer-termine")
+    public ResponseEntity<Anamnese> marquerTermine(@PathVariable Long id) {
         try {
-            Anamnese anamnese = anamneseService.marquerComplete(id);
+            Anamnese anamnese = anamneseService.marquerTermine(id);
             return ResponseEntity.ok(anamnese);
         } catch (RuntimeException e) {
             if (e.getMessage().contains("introuvable")) {
@@ -330,26 +331,12 @@ public class AnamneseController {
             }
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            log.error("Erreur lors du marquage comme complète", e);
+            log.error("Erreur lors du marquage comme terminé", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @PatchMapping("/{id}/marquer-en-attente")
-    public ResponseEntity<Anamnese> marquerEnAttente(@PathVariable Long id) {
-        try {
-            Anamnese anamnese = anamneseService.marquerEnAttente(id);
-            return ResponseEntity.ok(anamnese);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("introuvable")) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
-            log.error("Erreur lors du marquage en attente", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+    // ✅ SUPPRIMÉ : marquerEnAttente() pour s'harmoniser avec CompteRendu
 
     // === STATISTIQUES ===
 

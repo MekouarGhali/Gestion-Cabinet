@@ -219,19 +219,14 @@ body {
     font-weight: 500;
 }
 
-.status-complete {
+.status-termine {
     background-color: rgba(16, 185, 129, 0.1);
     color: rgb(16, 185, 129);
 }
 
-.status-progress {
+.status-en-cours {
     background-color: rgba(245, 158, 11, 0.1);
     color: rgb(245, 158, 11);
-}
-
-.status-pending {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: rgb(239, 68, 68);
 }
 
 /* Form Styles */

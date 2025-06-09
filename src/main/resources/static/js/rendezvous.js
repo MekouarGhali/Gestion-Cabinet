@@ -487,12 +487,12 @@ function createAppointmentElement(rendezVous) {
     appointment.style.top = `${startPosition}px`;
     appointment.style.height = `${duration}px`;
 
-    // Ajouter une indication si c'est un RDV récurrent
-    const recurringIcon = rendezVous.estRecurrent ? ' 🔄' : '';
-
     appointment.innerHTML = `
-        <div class="text-xs font-medium">${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}${recurringIcon}</div>
-        <div class="text-sm">${rendezVous.patient.prenom} ${rendezVous.patient.nom}</div>
+        <div class="appointment-header">
+        <div class="text-xs font-medium">${formatTimeForDisplay(startTime)} - ${formatTimeForDisplay(endTime)}</div>
+        ${rendezVous.estRecurrent ? '<div class="recurring-icon"><i class="fa-solid fa-arrows-rotate"></i></div>' : ''}
+    </div>
+    <div class="text-sm">${rendezVous.patient.prenom} ${rendezVous.patient.nom}</div>
     `;
 
     // Stocker les données du rendez-vous
@@ -807,9 +807,19 @@ function validateRendezVousForm(isEdit = false) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    if (selectedDate < today) {
+    if (selectedDate < today && !isEdit) {
         showNotification('error', 'Impossible de créer un rendez-vous dans le passé');
         return false;
+    }
+
+    // Permettre les dates passées en modification si récurrence activée
+    if (selectedDate < today && isEdit) {
+        const isRecurrent = document.getElementById(`${prefix}Recurring`).classList.contains('checked');
+
+        if (!isRecurrent) {
+            showNotification('error', 'Impossible de modifier un rendez-vous vers une date passée');
+            return false;
+        }
     }
 
     return true;

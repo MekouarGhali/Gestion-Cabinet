@@ -1,10 +1,11 @@
-// Module pour la gestion des dossiers patients - Version alignée sur patient_js_updated.js
+// Module pour la gestion des dossiers patients - Version avec modal ajout séances
 // Configuration API
 const PATIENT_RECORDS_API_BASE_URL = '/api';
 
 // Variables globales pour stocker les IDs actuels
 let currentAnamneseId = null;
 let currentCompteRenduId = null;
+let currentPatientForSessions = null; // Nouvelle variable pour le patient sélectionné
 
 // Classes API pour anamnèses et comptes rendus
 class PatientRecordsAnamneseAPI {
@@ -55,7 +56,7 @@ class PatientRecordsCompteRenduAPI {
     }
 }
 
-// API pour les séances (ajout manquant)
+// API pour les séances
 class PatientRecordsSeanceAPI {
     static async getByPatient(patientId) {
         try {
@@ -100,7 +101,7 @@ async function loadPatientSeances(patientId) {
     }
 }
 
-// Utilitaires spécifiques aux dossiers (alignés sur patient_js_updated.js)
+// Utilitaires spécifiques aux dossiers
 function formatDateSafe(dateString) {
     if (!dateString) return 'N/A';
     try {
@@ -164,13 +165,23 @@ function getCompteRenduStatusLabel(statut) {
     }
 }
 
-// Fonctions pour gérer les modals (alignées sur patient_js_updated.js)
+// Fonctions pour gérer les modals
 function showModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('show');
         modal.style.display = 'flex';
+
+        // Assurer un z-index élevé pour les modals d'ajout de séances
+        if (modalId === 'addSessionsModal') {
+            modal.style.zIndex = '10000'; // Plus élevé que le modal des dossiers patients
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100%';
+            modal.style.height = '100%';
+        }
     }
 }
 
@@ -196,11 +207,14 @@ function hideLoadingModal() {
     hideModal('loadingModal');
 }
 
-// Fonction principale d'ouverture des dossiers patient (alignée sur patient_js_updated.js)
+// Fonction principale d'ouverture des dossiers patient
 async function openPatientRecords(patient) {
     console.log('📂 Ouverture des dossiers pour le patient:', patient.prenom, patient.nom);
 
     try {
+        // Stocker le patient pour les modals d'ajout de séances
+        currentPatientForSessions = patient;
+
         // Mise à jour des informations d'en-tête
         const patientModalName = document.getElementById('patientModalName');
         const patientModalId = document.getElementById('patientModalId');
@@ -264,7 +278,7 @@ async function openPatientRecords(patient) {
         // Configurer les boutons nouvelles anamnèse et compte rendu
         setupPatientRecordButtons(patient);
 
-        // Ouvrir le modal (utiliser showModal au lieu de classList.remove('hidden'))
+        // Ouvrir le modal
         showModal('patientRecordsModal');
         console.log('✅ Modal dossiers patient ouvert');
 
@@ -276,7 +290,91 @@ async function openPatientRecords(patient) {
     }
 }
 
-// Fonctions de chargement des données (alignées sur patient_js_updated.js)
+// ===== NOUVELLES FONCTIONS POUR LE MODAL D'AJOUT DE SÉANCES =====
+
+function openAddSessionsModal(patient) {
+    console.log('➕ Ouverture modal ajout séances pour:', patient.prenom, patient.nom);
+
+    if (!patient) {
+        console.error('❌ Patient non défini pour l\'ajout de séances');
+        return;
+    }
+
+    currentPatientForSessions = patient;
+
+    // Remplir les champs du modal
+    document.getElementById('currentSessionsDisplay').value = patient.seancesPrevues || 0;
+    document.getElementById('additionalSessions').value = 1;
+    document.getElementById('totalSessionsDisplay').value = (patient.seancesPrevues || 0) + 1;
+
+    showModal('addSessionsModal');
+}
+
+async function addSessionToPatient() {
+    if (!currentPatientForSessions) {
+        console.error('❌ Aucun patient sélectionné pour l\'ajout de séances');
+        return;
+    }
+
+    const additionalSessions = parseInt(document.getElementById('additionalSessions').value) || 0;
+    if (additionalSessions <= 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('error', 'Veuillez entrer un nombre valide de séances à ajouter');
+        }
+        return;
+    }
+
+    const newTotalSessions = (currentPatientForSessions.seancesPrevues || 0) + additionalSessions;
+
+    const patientData = {
+        ...currentPatientForSessions,
+        seancesPrevues: newTotalSessions
+    };
+
+    try {
+        // Utiliser l'API PatientAPI si disponible, sinon utiliser fetch direct
+        let updatedPatient;
+        if (typeof window.PatientAPI !== 'undefined') {
+            updatedPatient = await window.PatientAPI.update(currentPatientForSessions.id, patientData);
+        } else {
+            const response = await fetch(`${PATIENT_RECORDS_API_BASE_URL}/patients/${currentPatientForSessions.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(patientData)
+            });
+            if (!response.ok) throw new Error('Erreur lors de la mise à jour');
+            updatedPatient = await response.json();
+        }
+
+        currentPatientForSessions = updatedPatient;
+
+        hideModal('addSessionsModal');
+
+        if (typeof showNotification === 'function') {
+            showNotification('success', `${additionalSessions} séance(s) ajoutée(s) au total avec succès.`);
+        }
+
+        // Recharger les patients si la fonction est disponible
+        if (typeof loadPatients === 'function') {
+            await loadPatients();
+        }
+
+        // Rouvrir le dossier patient avec les données mises à jour
+        await openPatientRecords(updatedPatient);
+
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'ajout de séances:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('error', 'Erreur lors de l\'ajout de séances');
+        }
+    }
+}
+
+// ===== FIN DES NOUVELLES FONCTIONS POUR LE MODAL D'AJOUT DE SÉANCES =====
+
+// Fonctions de chargement des données
 async function loadPatientAnamneses(patientId) {
     try {
         console.log('📋 Chargement des anamnèses pour patient ID:', patientId);
@@ -397,7 +495,7 @@ async function loadPatientComptesRendus(patientId) {
     }
 }
 
-// Event listeners pour les anamnèses (alignés sur patient_js_updated.js)
+// Event listeners pour les anamnèses
 function addAnamneseEventListeners() {
     document.querySelectorAll('.view-anamnese-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
@@ -421,7 +519,7 @@ function addAnamneseEventListeners() {
     });
 }
 
-// Event listeners pour les comptes rendus (alignés sur patient_js_updated.js)
+// Event listeners pour les comptes rendus
 function addCompteRenduEventListeners() {
     document.querySelectorAll('.view-compte-rendu-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
@@ -445,7 +543,7 @@ function addCompteRenduEventListeners() {
     });
 }
 
-// Fonctions de visualisation et traitement des anamnèses (alignées sur patient_js_updated.js)
+// Fonctions de visualisation et traitement des anamnèses
 async function viewAnamnese(anamneseId) {
     try {
         currentAnamneseId = anamneseId;
@@ -582,7 +680,7 @@ async function printAnamnese(anamneseId) {
     }
 }
 
-// Fonctions de visualisation et traitement des comptes rendus (alignées sur patient_js_updated.js)
+// Fonctions de visualisation et traitement des comptes rendus
 async function viewCompteRendu(compteRenduId) {
     try {
         currentCompteRenduId = compteRenduId;
@@ -719,7 +817,7 @@ async function printCompteRendu(compteRenduId) {
     }
 }
 
-// Fonctions pour générer le contenu HTML (alignées sur patient_js_updated.js)
+// Fonctions pour générer le contenu HTML
 function generateAnamneseHTML(anamnese) {
     const formatValue = (value) => value || 'Non renseigné';
     const formatBooleanValue = (value) => {
@@ -1067,7 +1165,7 @@ function generatePrintableCompteRenduContent(compteRendu) {
     `;
 }
 
-// Créer les modals dynamiquement (aligné sur patient_js_updated.js)
+// Créer les modals dynamiquement
 function createLoadingModal() {
     const modal = document.createElement('div');
     modal.id = 'loadingModal';
@@ -1163,7 +1261,7 @@ function createCompteRenduModal() {
     });
 }
 
-// Configuration des boutons pour les nouvelles anamnèse et compte rendu (alignée sur patient_js_updated.js)
+// Configuration des boutons pour les nouvelles anamnèse et compte rendu
 function setupPatientRecordButtons(patient) {
     const newAnamneseBtn = document.getElementById('newAnamneseForPatientBtn');
     const newCompteRenduBtn = document.getElementById('newCompteRenduForPatientBtn');
@@ -1187,6 +1285,19 @@ function setupPatientRecordButtons(patient) {
         refreshedCompteRenduBtn.addEventListener('click', function() {
             console.log('🔗 Redirection vers compte rendu pour patient ID:', patient.id);
             window.location.href = `/compte-rendu.html?patientId=${patient.id}`;
+        });
+    }
+
+    // ===== CONFIGURATION DU BOUTON AJOUTER SÉANCE =====
+    const addSessionBtn = document.getElementById('addSessionBtn');
+    if (addSessionBtn) {
+        // Supprimer les anciens event listeners
+        addSessionBtn.replaceWith(addSessionBtn.cloneNode(true));
+        const refreshedAddSessionBtn = document.getElementById('addSessionBtn');
+
+        refreshedAddSessionBtn.addEventListener('click', function() {
+            console.log('➕ Clic sur ajouter séance pour patient:', patient.prenom, patient.nom);
+            openAddSessionsModal(patient);
         });
     }
 
@@ -1236,7 +1347,48 @@ function setupPatientRecordButtons(patient) {
     }
 }
 
-// Initialisation du module lors du chargement (alignée sur patient_js_updated.js)
+// ===== CONFIGURATION DES EVENT LISTENERS POUR LE MODAL D'AJOUT DE SÉANCES =====
+function setupAddSessionsModalEventListeners() {
+    const addSessionsModal = document.getElementById('addSessionsModal');
+    const closeAddSessionsBtn = document.getElementById('closeAddSessionsBtn');
+    const cancelAddSessionsBtn = document.getElementById('cancelAddSessionsBtn');
+    const submitAddSessionsBtn = document.getElementById('submitAddSessionsBtn');
+    const additionalSessions = document.getElementById('additionalSessions');
+
+    if (closeAddSessionsBtn && addSessionsModal) {
+        closeAddSessionsBtn.addEventListener('click', function() {
+            console.log('❌ Fermeture modal ajout séances');
+            hideModal('addSessionsModal');
+        });
+    }
+
+    if (cancelAddSessionsBtn && addSessionsModal) {
+        cancelAddSessionsBtn.addEventListener('click', function() {
+            console.log('🚫 Annulation ajout séances');
+            hideModal('addSessionsModal');
+        });
+    }
+
+    if (submitAddSessionsBtn) {
+        submitAddSessionsBtn.addEventListener('click', function() {
+            console.log('✅ Soumission ajout séances');
+            addSessionToPatient();
+        });
+    }
+
+    if (additionalSessions) {
+        additionalSessions.addEventListener('input', function() {
+            const current = parseInt(document.getElementById('currentSessionsDisplay').value) || 0;
+            const additional = parseInt(this.value) || 0;
+            const totalDisplay = document.getElementById('totalSessionsDisplay');
+            if (totalDisplay) {
+                totalDisplay.value = current + additional;
+            }
+        });
+    }
+}
+
+// Initialisation du module lors du chargement
 document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Module patient-records initialisé');
 
@@ -1254,6 +1406,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const style = document.createElement('style');
         style.id = 'patientRecordsStyles';
         style.textContent = `
+            .modal.hidden {
+                opacity: 0 !important;
+                display: none !important;
+                z-index: -1 !important;
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
+
+            #patientRecordsModal.hidden,
+            #addSessionsModal.hidden {
+                visibility: hidden !important;
+                pointer-events: none !important;
+            }
             .preview-content,
             .preview-content * {
                 white-space: normal !important;
@@ -1277,6 +1442,13 @@ document.addEventListener('DOMContentLoaded', function() {
             .modal.show {
                 opacity: 1;
                 display: flex !important;
+            }
+            /* Z-index spécifique pour le modal d'ajout de séances */
+            #addSessionsModal {
+                z-index: 10000 !important;
+            }
+            #addSessionsModal .modal-content {
+                z-index: 10001 !important;
             }
             .modal-content {
                 background-color: white;
@@ -1405,11 +1577,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.appendChild(style);
     }
 
+    // 3. Configurer les event listeners pour le modal d'ajout de séances
+    setupAddSessionsModalEventListeners();
+
     console.log('🎨 Styles patient-records ajoutés');
+    console.log('⚙️ Event listeners modal ajout séances configurés');
 });
 
 // Exporter les fonctions principales pour utilisation externe
 window.openPatientRecords = openPatientRecords;
 window.loadPatientSeances = loadPatientSeances;
+window.openAddSessionsModal = openAddSessionsModal;
+window.addSessionToPatient = addSessionToPatient;
 
 console.log('📄 Module patient-records chargé avec succès');

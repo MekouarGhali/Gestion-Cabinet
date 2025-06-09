@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -73,8 +74,12 @@ public class AnamneseService {
             }
         }
 
+        // ✅ AJOUT : Déterminer automatiquement le statut
+        anamnese.setStatut(anamnese.determinerStatutAutomatique());
+
         Anamnese savedAnamnese = anamneseRepository.save(anamnese);
-        log.info("Anamnèse créée avec succès: {}", savedAnamnese.getNumAnamnese());
+        log.info("Anamnèse créée avec succès: {} - Statut: {}",
+                savedAnamnese.getNumAnamnese(), savedAnamnese.getStatut());
 
         return savedAnamnese;
     }
@@ -102,7 +107,6 @@ public class AnamneseService {
         anamnese.setAdressePar(anamneseDetails.getAdressePar());
         anamnese.setMotifConsultation(anamneseDetails.getMotifConsultation());
         anamnese.setReeducationAnterieure(anamneseDetails.getReeducationAnterieure());
-        anamnese.setStatut(anamneseDetails.getStatut());
 
         // Mettre à jour le patient si changé
         if (anamneseDetails.getPatient() != null && anamneseDetails.getPatient().getId() != null) {
@@ -129,8 +133,19 @@ public class AnamneseService {
         anamnese.setAntecedents(anamneseDetails.getAntecedents());
         anamnese.setObservations(anamneseDetails.getObservations());
 
+        // ✅ MODIFICATION : Déterminer le statut automatiquement OU garder le statut fourni
+        Anamnese.StatutAnamnese statutAutomatique = anamnese.determinerStatutAutomatique();
+        if (anamneseDetails.getStatut() != null) {
+            // Si l'utilisateur a fourni un statut, le conserver
+            anamnese.setStatut(anamneseDetails.getStatut());
+        } else {
+            // Sinon, utiliser le statut automatique
+            anamnese.setStatut(statutAutomatique);
+        }
+
         Anamnese updatedAnamnese = anamneseRepository.save(anamnese);
-        log.info("Anamnèse mise à jour avec succès: {}", updatedAnamnese.getNumAnamnese());
+        log.info("Anamnèse mise à jour avec succès: {} - Statut: {}",
+                updatedAnamnese.getNumAnamnese(), updatedAnamnese.getStatut());
 
         return updatedAnamnese;
     }
@@ -236,7 +251,7 @@ public class AnamneseService {
         return anamneseRepository.countByPatientId(patientId);
     }
 
-    // === GESTION DES STATUTS ===
+    // === GESTION DES STATUTS (MODIFIÉS) ===
 
     @Transactional
     public Anamnese updateStatut(Long id, Anamnese.StatutAnamnese nouveauStatut) {
@@ -256,15 +271,13 @@ public class AnamneseService {
         return updateStatut(id, Anamnese.StatutAnamnese.EN_COURS);
     }
 
+    // ✅ MODIFICATION : Renommé de marquerComplete à marquerTermine pour harmonisation
     @Transactional
-    public Anamnese marquerComplete(Long id) {
-        return updateStatut(id, Anamnese.StatutAnamnese.COMPLETE);
+    public Anamnese marquerTermine(Long id) {
+        return updateStatut(id, Anamnese.StatutAnamnese.TERMINE);
     }
 
-    @Transactional
-    public Anamnese marquerEnAttente(Long id) {
-        return updateStatut(id, Anamnese.StatutAnamnese.EN_ATTENTE);
-    }
+    // ✅ SUPPRIMÉ : marquerEnAttente() pour s'harmoniser avec CompteRendu
 
     // === UTILITAIRES ===
 
@@ -297,7 +310,7 @@ public class AnamneseService {
                 .nomPrenom(patient.getPrenom() + " " + patient.getNom())
                 .dateNaissance(patient.getDateNaissance())
                 .patient(patient)
-                .statut(Anamnese.StatutAnamnese.EN_ATTENTE)
+                .statut(Anamnese.StatutAnamnese.EN_COURS) // ✅ MODIFICATION : Statut par défaut changé
                 .build();
 
         return anamneseRepository.save(anamnese);
@@ -331,6 +344,12 @@ public class AnamneseService {
         if (anamnese.getDateNaissance().isAfter(anamnese.getDateEntretien())) {
             throw new IllegalArgumentException("La date de naissance ne peut pas être postérieure à la date d'entretien");
         }
+
+        // Vérifier l'âge minimum (doit être logique pour une anamnèse)
+        int age = LocalDate.now().getYear() - anamnese.getDateNaissance().getYear();
+        if (age > 100) {
+            throw new IllegalArgumentException("L'âge du patient semble incohérent");
+        }
     }
 
     // === MÉTHODES D'EXPORT/IMPORT ===
@@ -344,15 +363,14 @@ public class AnamneseService {
     }
 
     public Map<String, Object> getAnamneseStatistiques() {
-        Map<String, Object> stats = Map.of(
-                "total", countTotal(),
-                "enAttente", countByStatut(Anamnese.StatutAnamnese.EN_ATTENTE),
-                "enCours", countByStatut(Anamnese.StatutAnamnese.EN_COURS),
-                "completes", countByStatut(Anamnese.StatutAnamnese.COMPLETE),
-                "parStatut", getStatistiquesByStatut(),
-                "recentes", getRecentAnamneses().size(),
-                "incompletes", getIncompleteAnamneses().size()
-        );
+        Map<String, Object> stats = new HashMap<>();
+
+        stats.put("total", countTotal());
+        stats.put("enCours", countByStatut(Anamnese.StatutAnamnese.EN_COURS));
+        stats.put("terminees", countByStatut(Anamnese.StatutAnamnese.TERMINE)); // ✅ MODIFICATION : Renommé
+        stats.put("parStatut", getStatistiquesByStatut());
+        stats.put("recentes", getRecentAnamneses().size());
+        stats.put("incompletes", getIncompleteAnamneses().size());
 
         log.info("Statistiques générées: {}", stats);
         return stats;
@@ -374,7 +392,7 @@ public class AnamneseService {
                 .adressePar(original.getAdressePar())
                 .motifConsultation(original.getMotifConsultation())
                 .reeducationAnterieure(original.getReeducationAnterieure())
-                .statut(Anamnese.StatutAnamnese.EN_ATTENTE)
+                .statut(Anamnese.StatutAnamnese.EN_COURS) // ✅ MODIFICATION : Statut par défaut changé
                 .patient(original.getPatient())
                 .parents(original.getParents())
                 .consanguinite(original.getConsanguinite())
@@ -405,7 +423,7 @@ public class AnamneseService {
                         LocalDate.of(2000, 1, 1),
                         dateLimite
                 ).stream()
-                .filter(a -> a.getStatut() == Anamnese.StatutAnamnese.COMPLETE)
+                .filter(a -> a.getStatut() == Anamnese.StatutAnamnese.TERMINE) // ✅ MODIFICATION : Filtrer sur TERMINE
                 .collect(Collectors.toList());
     }
 

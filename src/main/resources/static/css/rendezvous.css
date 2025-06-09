@@ -559,6 +559,22 @@ button:hover {
     }
 }
 
+.appointment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.recurring-icon {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    flex-shrink: 0;
+    margin-left: 4px;
+    margin-right: 4px;
+    margin-top: 1px;
+}
+
 /* === DAY HEADERS ADAPTÉS AU THÈME === */
 .day-header {
     background-color: #ffffff !important;

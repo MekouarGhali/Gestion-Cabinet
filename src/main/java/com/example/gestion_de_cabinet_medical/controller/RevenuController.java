@@ -143,6 +143,24 @@ public class RevenuController {
         return ResponseEntity.ok(revenuService.getStatsByModePaiement());
     }
 
+    // ✅ NOUVEAU: Endpoint pour migrer les revenus existants
+    @PostMapping("/migrate-to-pending")
+    public ResponseEntity<?> migrateRevenusToPending() {
+        try {
+            revenuService.migrerRevenusVersEnAttente();
+            return ResponseEntity.ok(Map.of(
+                    "message", "Migration des revenus vers EN_ATTENTE terminée avec succès",
+                    "status", "success"
+            ));
+        } catch (Exception e) {
+            log.error("Erreur lors de la migration des revenus", e);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Erreur lors de la migration: " + e.getMessage(),
+                    "status", "error"
+            ));
+        }
+    }
+
     // Export (pour plus tard)
     @GetMapping("/export")
     public ResponseEntity<?> exportRevenus(

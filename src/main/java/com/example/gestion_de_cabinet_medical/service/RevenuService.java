@@ -42,7 +42,7 @@ public class RevenuService {
         // Déterminer le type de prestation principal
         String typePrestationPrincipal = determinerTypePrestationPrincipal(facture);
 
-        // Créer le revenu
+        // Créer le revenu avec statut EN_ATTENTE par défaut
         Revenu revenu = Revenu.builder()
                 .facture(facture)
                 .patient(facture.getPatient())
@@ -51,13 +51,13 @@ public class RevenuService {
                 .montant(facture.getMontantTotal())
                 .modePaiement(facture.getModePaiement())
                 .mutuelle(facture.getMutuelle())
-                .statut(Revenu.StatutRevenu.PAYE) // Par défaut, considéré comme payé
+                .statut(Revenu.StatutRevenu.EN_ATTENTE) // ✅ CHANGÉ: EN_ATTENTE par défaut au lieu de PAYE
                 .numeroFacture(facture.getNumero())
                 .nomCompletPatient(facture.getNomCompletPatient())
                 .typePrestationPrincipal(typePrestationPrincipal)
                 .build();
 
-        log.info("Création d'un revenu pour la facture {} - Montant: {} DH",
+        log.info("Création d'un revenu EN ATTENTE pour la facture {} - Montant: {} DH",
                 facture.getNumero(), facture.getMontantTotal());
 
         return revenuRepository.save(revenu);
@@ -65,9 +65,11 @@ public class RevenuService {
 
     public Revenu updateStatut(Long id, Revenu.StatutRevenu nouveauStatut) {
         Revenu revenu = getById(id);
+        Revenu.StatutRevenu ancienStatut = revenu.getStatut();
         revenu.setStatut(nouveauStatut);
 
-        log.info("Mise à jour du statut du revenu {} vers {}", id, nouveauStatut);
+        log.info("Mise à jour du statut du revenu {} de {} vers {}",
+                id, ancienStatut, nouveauStatut);
         return revenuRepository.save(revenu);
     }
 
@@ -114,7 +116,7 @@ public class RevenuService {
         return revenuRepository.findByYear(year);
     }
 
-    // Statistiques
+    // Statistiques - ✅ MODIFIÉES pour tenir compte du nouveau statut par défaut
     public Map<String, Object> getStatistics() {
         LocalDate now = LocalDate.now();
         int currentYear = now.getYear();
@@ -124,7 +126,7 @@ public class RevenuService {
 
         Map<String, Object> stats = new HashMap<>();
 
-        // Revenus du mois
+        // Revenus du mois (SEULEMENT les revenus PAYÉS)
         Double revenusCurrentMonth = revenuRepository.getTotalRevenue(currentYear, currentMonth);
         Double revenusPreviousMonth = revenuRepository.getTotalRevenue(previousMonthYear, previousMonth);
         stats.put("revenusCurrentMonth", revenusCurrentMonth != null ? revenusCurrentMonth : 0.0);
@@ -138,7 +140,7 @@ public class RevenuService {
             stats.put("evolutionMensuelle", 0.0);
         }
 
-        // Revenus de l'année
+        // Revenus de l'année (SEULEMENT les revenus PAYÉS)
         Double revenusCurrentYear = revenuRepository.getTotalRevenueByYear(currentYear);
         Double revenusPreviousYear = revenuRepository.getTotalRevenueByYear(currentYear - 1);
         stats.put("revenusCurrentYear", revenusCurrentYear != null ? revenusCurrentYear : 0.0);
@@ -152,7 +154,7 @@ public class RevenuService {
             stats.put("evolutionAnnuelle", 0.0);
         }
 
-        // Séances du mois
+        // Séances du mois (TOUTES les séances, pas seulement payées)
         Long seancesCurrentMonth = revenuRepository.countSessionsByMonth(currentYear, currentMonth);
         Long seancesPreviousMonth = revenuRepository.countSessionsByMonth(previousMonthYear, previousMonth);
         stats.put("seancesCurrentMonth", seancesCurrentMonth != null ? seancesCurrentMonth : 0L);
@@ -235,5 +237,24 @@ public class RevenuService {
         }
 
         log.info("Synchronisation des revenus terminée");
+    }
+
+    // ✅ NOUVELLE MÉTHODE: Pour migrer les revenus existants de PAYE vers EN_ATTENTE
+    @Transactional
+    public void migrerRevenusVersEnAttente() {
+        log.info("Migration des revenus existants vers le statut EN_ATTENTE...");
+
+        List<Revenu> revenus = revenuRepository.findAll();
+        int migratedCount = 0;
+
+        for (Revenu revenu : revenus) {
+            if (revenu.getStatut() == Revenu.StatutRevenu.PAYE) {
+                revenu.setStatut(Revenu.StatutRevenu.EN_ATTENTE);
+                revenuRepository.save(revenu);
+                migratedCount++;
+            }
+        }
+
+        log.info("Migration terminée: {} revenus migrés vers EN_ATTENTE", migratedCount);
     }
 }

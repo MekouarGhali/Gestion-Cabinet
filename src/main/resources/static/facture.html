@@ -29,7 +29,7 @@
         <button id="openSidebarBtn" class="burger-btn text-gray-600 mr-6">
           <i class="ri-menu-line text-xl"></i>
         </button>
-        <h2 class="text-xl font-semibold text-gray-800">Factures</h2>
+        <h2 class="text-xl font-semibold text-gray-800">Documents > Factures</h2>
         <div class="ml-6 text-sm text-gray-500" id="currentDate">
           <!-- Current date will be inserted by JS -->
         </div>
@@ -71,7 +71,7 @@
             <div>
               <label for="patientSearch" class="block text-sm font-medium text-gray-700 mb-1">Patient *</label>
               <div class="patient-search-container">
-                <input type="text" id="patientSearch" class="patient-search-input" placeholder="Rechercher un patient...">
+                <input type="text" id="patientSearch" class="patient-search-input" placeholder="Rechercher un patient..." autocomplete="off" required>
                 <div class="patient-search-options" id="patientOptions"></div>
                 <input type="hidden" id="selectedPatient" name="patient">
                 <span class="patient-search-clear" id="patientClear"><i class="ri-close-line"></i></span>

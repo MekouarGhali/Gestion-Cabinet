@@ -164,20 +164,123 @@ function formatDateForInput(dateString) {
 
 function getStatusClass(statut) {
     switch(statut) {
-        case 'COMPLETE': return 'status-complete';
-        case 'EN_COURS': return 'status-progress';
-        case 'EN_ATTENTE': return 'status-pending';
-        default: return 'status-pending';
+        case 'TERMINE': return 'status-termine';
+        case 'EN_COURS': return 'status-en-cours';
+        default: return 'status-en-cours'; // Par défaut en cours
     }
 }
 
 function getStatusLabel(statut) {
     switch(statut) {
-        case 'COMPLETE': return 'Complète';
+        case 'TERMINE': return 'Terminé';
         case 'EN_COURS': return 'En cours';
-        case 'EN_ATTENTE': return 'En attente';
-        default: return 'En attente';
+        default: return 'En cours'; // Par défaut en cours
     }
+}
+
+// ✅ AJOUT : Fonction pour déterminer automatiquement le statut
+function determineStatutAutomatique(anamneseData) {
+    // Vérifier les champs obligatoires
+    const champsObligatoiresRemplis =
+        anamneseData.nomPrenom && anamneseData.nomPrenom.trim() !== '' &&
+        anamneseData.dateNaissance &&
+        anamneseData.dateEntretien;
+
+    if (!champsObligatoiresRemplis) {
+        return 'EN_COURS';
+    }
+
+    // Compter les sections remplies
+    let sectionsRemplies = 0;
+    const totalSections = 8; // parents, grossesse, accouchement, allaitement, développement, langage, comportement, divers
+
+    // Vérifier les sections
+    if (hasParentsContent(anamneseData)) sectionsRemplies++;
+    if (hasGrossesseContent(anamneseData)) sectionsRemplies++;
+    if (hasAccouchementContent(anamneseData)) sectionsRemplies++;
+    if (hasAllaitementContent(anamneseData)) sectionsRemplies++;
+    if (hasDeveloppementContent(anamneseData)) sectionsRemplies++;
+    if (hasLangageContent(anamneseData)) sectionsRemplies++;
+    if (hasComportementContent(anamneseData)) sectionsRemplies++;
+    if (hasDiversContent(anamneseData)) sectionsRemplies++;
+
+    // Critères pour "TERMINE": au moins 5 sections sur 8 remplies
+    if (sectionsRemplies >= 5) {
+        return 'TERMINE';
+    }
+
+    return 'EN_COURS';
+}
+
+// Fonctions utilitaires pour vérifier le contenu des sections
+function hasParentsContent(data) {
+    return data.parents && (
+        (data.parents.nomPere && data.parents.nomPere.trim()) ||
+        (data.parents.nomMere && data.parents.nomMere.trim())
+    );
+}
+
+function hasGrossesseContent(data) {
+    return data.grossesse && (
+        data.grossesse.desire !== null ||
+        data.grossesse.compliquee !== null ||
+        (data.grossesse.autres && data.grossesse.autres.trim())
+    );
+}
+
+function hasAccouchementContent(data) {
+    return data.accouchement && (
+        data.accouchement.terme !== null ||
+        data.accouchement.premature !== null ||
+        data.accouchement.postMature !== null ||
+        data.accouchement.voieBasse !== null ||
+        data.accouchement.cesarienne !== null ||
+        data.accouchement.cris !== null ||
+        (data.accouchement.autres && data.accouchement.autres.trim())
+    );
+}
+
+function hasAllaitementContent(data) {
+    return data.allaitement && (
+        data.allaitement.type ||
+        data.allaitement.duree
+    );
+}
+
+function hasDeveloppementContent(data) {
+    return data.developpement && (
+        (data.developpement.tenueTete && data.developpement.tenueTete.trim()) ||
+        (data.developpement.positionAssise && data.developpement.positionAssise.trim()) ||
+        (data.developpement.quatrePattes && data.developpement.quatrePattes.trim()) ||
+        (data.developpement.positionDebout && data.developpement.positionDebout.trim()) ||
+        (data.developpement.marche && data.developpement.marche.trim())
+    );
+}
+
+function hasLangageContent(data) {
+    return data.langage && (
+        (data.langage.premierMot && data.langage.premierMot.trim()) ||
+        (data.langage.premierePhrase && data.langage.premierePhrase.trim())
+    );
+}
+
+function hasComportementContent(data) {
+    return data.comportement && (
+        (data.comportement.avecMere && data.comportement.avecMere.trim()) ||
+        (data.comportement.avecPere && data.comportement.avecPere.trim()) ||
+        (data.comportement.avecFreres && data.comportement.avecFreres.trim()) ||
+        (data.comportement.aEcole && data.comportement.aEcole.trim()) ||
+        (data.comportement.autres && data.comportement.autres.trim())
+    );
+}
+
+function hasDiversContent(data) {
+    return data.divers && (
+        (data.divers.scolarisation && data.divers.scolarisation.trim()) ||
+        (data.divers.sommeil && data.divers.sommeil.trim()) ||
+        (data.divers.appetit && data.divers.appetit.trim()) ||
+        (data.divers.proprete && data.divers.proprete.trim())
+    );
 }
 
 // Gestion des anamnèses
@@ -849,7 +952,7 @@ function getFormData(formPrefix = '') {
         adressePar: getFieldValue('adressePar') || null,
         motifConsultation: getFieldValue('motifConsultation') || null,
         reeducationAnterieure: getFieldValue('reeducationAnterieure') || null,
-        statut: getSelectValue('statut') || 'EN_ATTENTE',
+        statut: getSelectValue('statut') || 'EN_COURS',
         observations: getFieldValue('observations') || null
     };
 
@@ -957,6 +1060,7 @@ function validateForm() {
 }
 
 // Réinitialisation du formulaire
+// Réinitialisation du formulaire
 async function resetForm() {
     const form = document.getElementById('newAnamneseForm');
     if (!form) {
@@ -992,7 +1096,7 @@ async function resetForm() {
         dateField.valueAsDate = new Date();
     }
 
-    // ✅ AMÉLIORATION : Reset complet des données patient
+    // ✅ MODIFICATION : Reset complet des données patient
     const searchField = document.getElementById('patientSearch');
     const hiddenField = document.getElementById('patientId');
     const clearBtn = document.getElementById('patientClear');
@@ -1077,7 +1181,13 @@ function openEditModal(anamnese) {
     const statutEl = document.getElementById('editStatut');
 
     if (numberEl) numberEl.textContent = anamnese.numAnamnese;
-    if (statutEl) statutEl.value = anamnese.statut;
+    if (statutEl) {
+        statutEl.innerHTML = `
+            <option value="EN_COURS">En cours</option>
+            <option value="TERMINE">Terminé</option>
+        `;
+        statutEl.value = anamnese.statut;
+    }
 
     // Initialiser la recherche de patients pour l'édition
     initPatientSearch('editPatientSearch', 'editPatientOptions', 'editPatientId', 'editPatientClear', 'editNomPrenom');
@@ -1420,6 +1530,13 @@ function fillEditForm(anamnese) {
             }
         });
     }
+
+    if (anamnese.statut) {
+        const editStatutSelect = document.getElementById('editStatut');
+        if (editStatutSelect) {
+            editStatutSelect.value = anamnese.statut;
+        }
+    }
 }
 
 function openViewModal(anamnese) {
@@ -1470,6 +1587,7 @@ function generateViewContent(anamnese) {
                 <div><strong>Date de naissance :</strong> ${formatDate(anamnese.dateNaissance)}</div>
                 <div><strong>Adressé par :</strong> ${formatValue(anamnese.adressePar)}</div>
                 <div><strong>Motif de consultation :</strong> ${formatValue(anamnese.motifConsultation)}</div>
+                <div><strong>Statut :</strong> ${getStatusLabel(anamnese.statut)}</div>
                 <div class="md:col-span-2"><strong>Rééducation antérieure :</strong> ${formatValue(anamnese.reeducationAnterieure)}</div>
             </div>
         </div>
@@ -1667,21 +1785,40 @@ async function saveAnamnese(isEdit = false) {
             return;
         }
 
+        // ✅ AJOUT : Déterminer automatiquement le statut
+        formData.statut = determineStatutAutomatique(formData);
+
         console.log('📤 Envoi des données:', formData);
 
         if (isEdit && selectedAnamnese) {
-            // Ajouter le statut depuis le select
+            // Ajouter le statut depuis le select si modifié manuellement
             const statutSelect = document.getElementById('editStatut');
             if (statutSelect) {
-                formData.statut = statutSelect.value;
+                const statutManuel = statutSelect.value;
+                const statutAutomatique = determineStatutAutomatique(formData);
+
+                // Si le statut manuel est différent de l'automatique, garder le manuel
+                formData.statut = statutManuel !== statutAutomatique ? statutManuel : statutAutomatique;
             }
 
             const updatedAnamnese = await AnamneseAPI.update(selectedAnamnese.id, formData);
-            showNotification('success', 'Anamnèse mise à jour avec succès');
+
+            // ✅ MODIFICATION : Message personnalisé selon le statut
+            const statusMessage = formData.statut === 'TERMINE'
+                ? 'Anamnèse mise à jour et marquée comme terminée !'
+                : 'Anamnèse mise à jour (en cours).';
+
+            showNotification('success', statusMessage);
             closeEditModal();
         } else {
             const newAnamnese = await AnamneseAPI.create(formData);
-            showNotification('success', 'Anamnèse créée avec succès');
+
+            // ✅ MODIFICATION : Message personnalisé selon le statut
+            const statusMessage = formData.statut === 'TERMINE'
+                ? 'Anamnèse créée et marquée comme terminée !'
+                : 'Anamnèse créée en cours de rédaction.';
+
+            showNotification('success', statusMessage);
             closeNewAnamneseModal();
         }
 
@@ -2293,29 +2430,27 @@ function showNotification(type, message) {
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const mainContent = document.getElementById('mainContent');
-    const openBtn = document.getElementById('openSidebarBtn');
-    const closeBtn = document.getElementById('closeSidebarBtn');
+    const openSidebarBtn = document.getElementById('openSidebarBtn');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
 
-    if (!sidebar || !mainContent) return;
+    if (!sidebar || !mainContent || !openSidebarBtn || !closeSidebarBtn) return;
 
-    const isHidden = sidebar.classList.contains('sidebar-hidden');
+    const isOpen = !sidebar.classList.contains('sidebar-hidden');
 
-    if (isHidden) {
-        sidebar.classList.remove('sidebar-hidden');
-        mainContent.classList.add('ml-64');
-        if (openBtn) {
-            openBtn.classList.add('hidden');
-            openBtn.style.display = 'none';
-        }
-        if (closeBtn) closeBtn.classList.remove('hidden');
-    } else {
+    if (isOpen) {
+        // Fermer
         sidebar.classList.add('sidebar-hidden');
         mainContent.classList.remove('ml-64');
-        if (openBtn) {
-            openBtn.classList.remove('hidden');
-            openBtn.style.display = 'flex';
-        }
-        if (closeBtn) closeBtn.classList.add('hidden');
+        openSidebarBtn.classList.remove('hidden');
+        openSidebarBtn.style.display = 'flex';
+        closeSidebarBtn.classList.add('hidden');
+    } else {
+        // Ouvrir
+        sidebar.classList.remove('sidebar-hidden');
+        mainContent.classList.add('ml-64');
+        openSidebarBtn.classList.add('hidden');
+        openSidebarBtn.style.display = 'none';
+        closeSidebarBtn.classList.remove('hidden');
     }
 }
 
@@ -2434,33 +2569,22 @@ function initializeEventListeners() {
     });
 }
 
-// Chargement de la sidebar
-async function loadSidebar() {
-    try {
-        const response = await fetch('/partials/sidebar.html');
-        if (!response.ok) throw new Error('Sidebar not found');
-
-        const html = await response.text();
-        const sidebarContainer = document.getElementById('sidebar-container');
-
-        if (sidebarContainer) {
-            sidebarContainer.innerHTML = html;
-            console.log('✅ Sidebar HTML injectée');
-        }
-    } catch (error) {
-        console.error('❌ Erreur lors du chargement de la sidebar:', error);
-    }
-}
-
 // Initialisation de la page
 async function initializePage() {
     try {
         console.log('🚀 Initialisation de la page anamnèse...');
 
         // 1. Charger la sidebar
-        await loadSidebar();
+        try {
+            const response = await fetch('/partials/sidebar.html');
+            const sidebarHTML = await response.text();
+            document.getElementById('sidebar-container').innerHTML = sidebarHTML;
+            console.log('✅ Sidebar chargée');
+        } catch (error) {
+            console.error("❌ Erreur lors du chargement de la sidebar :", error);
+        }
 
-        // 2. Configurer la sidebar après chargement
+        // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
         setTimeout(() => {
             const sidebar = document.getElementById('sidebar');
             const mainContent = document.getElementById('mainContent');

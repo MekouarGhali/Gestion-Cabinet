@@ -50,10 +50,18 @@
             <div class="bg-white rounded-lg shadow-sm p-4 mb-6 border border-gray-100">
                 <div class="flex flex-wrap justify-between items-center gap-4">
                     <div class="flex space-x-4">
-                        <button class="tab-button active px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="all">Toutes</button>
-                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="EN_ATTENTE">En attente</button>
-                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="EN_COURS">En cours</button>
-                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="COMPLETE">Complètes</button>
+                        <button class="tab-button active px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="all">
+                            <i class="ri-list-check-2 mr-2"></i>
+                            Toutes
+                        </button>
+                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="EN_COURS">
+                            <i class="ri-time-line mr-2"></i>
+                            En cours
+                        </button>
+                        <button class="tab-button bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="TERMINE">
+                            <i class="ri-check-line mr-2"></i>
+                            Terminé
+                        </button>
                     </div>
                     <div class="relative">
                         <input type="text" id="searchInput" placeholder="Rechercher une anamnèse..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-button focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm">
@@ -550,9 +558,8 @@
                 <div class="flex items-center space-x-2">
                     <label class="text-sm text-gray-700">Statut:</label>
                     <select id="editStatut" class="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
-                        <option value="EN_ATTENTE">En attente</option>
                         <option value="EN_COURS">En cours</option>
-                        <option value="COMPLETE">Complète</option>
+                        <option value="TERMINE">Terminé</option>
                     </select>
                 </div>
                 <button id="closeEditAnamneseBtn" class="text-gray-400 hover:text-gray-500">

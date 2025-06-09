@@ -35,17 +35,17 @@ public class Anamnese {
     private String motifConsultation;
     private String reeducationAnterieure;
 
+    // ✅ MODIFICATION : Statuts harmonisés avec CompteRendu
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private StatutAnamnese statut = StatutAnamnese.EN_ATTENTE;
+    private StatutAnamnese statut = StatutAnamnese.EN_COURS;
 
-    // ✅ CORRECTION CRITIQUE: Patient avec JsonIgnoreProperties au lieu de JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "anamneses", "rendezVous", "factures"})
     private Patient patient;
 
-    // === INFORMATIONS STRUCTURÉES (inchangées) ===
+    // === INFORMATIONS STRUCTURÉES ===
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = "nomPere", column = @Column(name = "nom_pere")),
@@ -154,11 +154,10 @@ public class Anamnese {
         dateModification = LocalDateTime.now();
     }
 
-    // === ÉNUMÉRATIONS ET CLASSES INTERNES (inchangées) ===
+    // ✅ MODIFICATION : Énumération des statuts harmonisée avec CompteRendu
     public enum StatutAnamnese {
-        EN_ATTENTE("En attente"),
         EN_COURS("En cours"),
-        COMPLETE("Complète");
+        TERMINE("Terminé");
 
         private final String libelle;
         StatutAnamnese(String libelle) { this.libelle = libelle; }
@@ -175,7 +174,7 @@ public class Anamnese {
         public String getLibelle() { return libelle; }
     }
 
-    // Toutes les classes @Embeddable restent identiques...
+    // === CLASSES EMBEDDABLES (inchangées) ===
     @Embeddable
     @Data
     @NoArgsConstructor
@@ -276,7 +275,7 @@ public class Anamnese {
         private String familiaux;
     }
 
-    // === MÉTHODES UTILITAIRES (sans accès aux collections) ===
+    // === MÉTHODES UTILITAIRES ===
     public String getPatientNomComplet() {
         return patient != null ?
                 (patient.getPrenom() + " " + patient.getNom()).trim() :
@@ -288,5 +287,117 @@ public class Anamnese {
             return LocalDate.now().getYear() - dateNaissance.getYear();
         }
         return null;
+    }
+
+    public boolean isComplete() {
+        return statut == StatutAnamnese.TERMINE;
+    }
+
+    public boolean estEnCours() {
+        return statut == StatutAnamnese.EN_COURS;
+    }
+
+    // ✅ AJOUT : Méthode pour déterminer le statut automatiquement
+    public StatutAnamnese determinerStatutAutomatique() {
+        // Vérifier les champs obligatoires
+        boolean champsObligatoiresRemplis =
+                nomPrenom != null && !nomPrenom.trim().isEmpty() &&
+                        dateNaissance != null &&
+                        dateEntretien != null;
+
+        if (!champsObligatoiresRemplis) {
+            return StatutAnamnese.EN_COURS;
+        }
+
+        // Compter les sections remplies
+        int sectionsRemplies = 0;
+        int totalSections = 8; // parents, grossesse, accouchement, allaitement, développement, langage, comportement, divers
+
+        if (parents != null && hasParentsContent()) sectionsRemplies++;
+        if (grossesse != null && hasGrossesseContent()) sectionsRemplies++;
+        if (accouchement != null && hasAccouchementContent()) sectionsRemplies++;
+        if (allaitement != null && hasAllaitementContent()) sectionsRemplies++;
+        if (developpement != null && hasDeveloppementContent()) sectionsRemplies++;
+        if (langage != null && hasLangageContent()) sectionsRemplies++;
+        if (comportement != null && hasComportementContent()) sectionsRemplies++;
+        if (divers != null && hasDiversContent()) sectionsRemplies++;
+
+        // Critères pour "TERMINE": au moins 5 sections sur 8 remplies
+        if (sectionsRemplies >= 5) {
+            return StatutAnamnese.TERMINE;
+        }
+
+        return StatutAnamnese.EN_COURS;
+    }
+
+    // ✅ AJOUT : Méthodes utilitaires pour vérifier le contenu des sections
+    private boolean hasParentsContent() {
+        return parents != null && (
+                (parents.getNomPere() != null && !parents.getNomPere().trim().isEmpty()) ||
+                        (parents.getNomMere() != null && !parents.getNomMere().trim().isEmpty())
+        );
+    }
+
+    private boolean hasGrossesseContent() {
+        return grossesse != null && (
+                grossesse.getDesire() != null ||
+                        grossesse.getCompliquee() != null ||
+                        (grossesse.getAutres() != null && !grossesse.getAutres().trim().isEmpty())
+        );
+    }
+
+    private boolean hasAccouchementContent() {
+        return accouchement != null && (
+                accouchement.getTerme() != null ||
+                        accouchement.getPremature() != null ||
+                        accouchement.getPostMature() != null ||
+                        accouchement.getVoieBasse() != null ||
+                        accouchement.getCesarienne() != null ||
+                        accouchement.getCris() != null ||
+                        (accouchement.getAutres() != null && !accouchement.getAutres().trim().isEmpty())
+        );
+    }
+
+    private boolean hasAllaitementContent() {
+        return allaitement != null && (
+                allaitement.getType() != null ||
+                        allaitement.getDuree() != null
+        );
+    }
+
+    private boolean hasDeveloppementContent() {
+        return developpement != null && (
+                (developpement.getTenueTete() != null && !developpement.getTenueTete().trim().isEmpty()) ||
+                        (developpement.getPositionAssise() != null && !developpement.getPositionAssise().trim().isEmpty()) ||
+                        (developpement.getQuatrePattes() != null && !developpement.getQuatrePattes().trim().isEmpty()) ||
+                        (developpement.getPositionDebout() != null && !developpement.getPositionDebout().trim().isEmpty()) ||
+                        (developpement.getMarche() != null && !developpement.getMarche().trim().isEmpty())
+        );
+    }
+
+    private boolean hasLangageContent() {
+        return langage != null && (
+                (langage.getPremierMot() != null && !langage.getPremierMot().trim().isEmpty()) ||
+                        (langage.getPremierePhrase() != null && !langage.getPremierePhrase().trim().isEmpty())
+        );
+    }
+
+    private boolean hasComportementContent() {
+        return comportement != null && (
+                (comportement.getAvecMere() != null && !comportement.getAvecMere().trim().isEmpty()) ||
+                        (comportement.getAvecPere() != null && !comportement.getAvecPere().trim().isEmpty()) ||
+                        (comportement.getAvecFreres() != null && !comportement.getAvecFreres().trim().isEmpty()) ||
+                        (comportement.getAEcole() != null && !comportement.getAEcole().trim().isEmpty()) ||
+                        (comportement.getAutres() != null && !comportement.getAutres().trim().isEmpty())
+        );
+    }
+
+    private boolean hasDiversContent() {
+        return divers != null && (
+                (divers.getScolarisation() != null && !divers.getScolarisation().trim().isEmpty()) ||
+                        (divers.getSommeil() != null && !divers.getSommeil().trim().isEmpty()) ||
+                        (divers.getAppetit() != null && !divers.getAppetit().trim().isEmpty()) ||
+                        (divers.getProprete() != null && !divers.getProprete().trim().isEmpty())
+        );
     }
 }

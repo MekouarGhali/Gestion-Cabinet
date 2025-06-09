@@ -410,12 +410,12 @@ public class RendezVousService {
                 rendezVous.getHeureDebut().equals(rendezVous.getHeureFin())) {
             throw new RuntimeException("L'heure de fin doit être après l'heure de début");
         }
-
+        /*
         // Vérifier que le rendez-vous ne soit pas dans le passé (sauf pour modification)
         LocalDate today = LocalDate.now();
         if (rendezVous.getDateRendezVous().isBefore(today)) {
             throw new RuntimeException("Impossible de créer un rendez-vous dans le passé");
-        }
+        }*/
     }
 
     private boolean hasTimeConflict(RendezVous rendezVous) {

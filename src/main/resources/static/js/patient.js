@@ -575,7 +575,7 @@ function addButtonEventListeners() {
     });
 }
 
-// Modals (CRUD seulement)
+// Modals (CRUD seulement - sans modal ajout séances)
 function openEditPatientModal(patient) {
     console.log('✏️ Ouverture modal édition pour:', patient.prenom, patient.nom);
 
@@ -625,16 +625,6 @@ function openEditPatientModal(patient) {
     editModal.style.width = '100%';
     editModal.style.height = '100%';
     console.log('✅ Modal édition ouvert');
-}
-
-function openAddSessionsModal(patient) {
-    if (!patient) return;
-
-    document.getElementById('currentSessionsDisplay').value = patient.seancesPrevues || 0;
-    document.getElementById('additionalSessions').value = 1;
-    document.getElementById('totalSessionsDisplay').value = (patient.seancesPrevues || 0) + 1;
-
-    document.getElementById('addSessionsModal').classList.remove('hidden');
 }
 
 // Validation et sauvegarde
@@ -786,40 +776,6 @@ async function deletePatient() {
         await loadPatients();
     } catch (error) {
         showNotification('error', 'Erreur lors de la suppression du patient');
-    }
-}
-
-async function addSessionToPatient() {
-    if (!selectedPatient) return;
-
-    const additionalSessions = parseInt(document.getElementById('additionalSessions').value) || 0;
-    if (additionalSessions <= 0) {
-        showNotification('error', 'Veuillez entrer un nombre valide de séances à ajouter');
-        return;
-    }
-
-    const newTotalSessions = (selectedPatient.seancesPrevues || 0) + additionalSessions;
-
-    const patientData = {
-        ...selectedPatient,
-        seancesPrevues: newTotalSessions
-    };
-
-    try {
-        const updatedPatient = await PatientAPI.update(selectedPatient.id, patientData);
-        selectedPatient = updatedPatient;
-
-        document.getElementById('addSessionsModal').classList.add('hidden');
-        showNotification('success', `${additionalSessions} séance(s) ajoutée(s) au total avec succès.`);
-
-        await loadPatients();
-
-        // Rouvrir le dossier patient si le module est disponible
-        if (typeof openPatientRecords === 'function') {
-            await openPatientRecords(updatedPatient);
-        }
-    } catch (error) {
-        showNotification('error', 'Erreur lors de l\'ajout de séances');
     }
 }
 
@@ -1164,47 +1120,6 @@ function setupModalEventListeners() {
         });
     }
 
-    // Modal ajout séances
-    const addSessionBtn = document.getElementById('addSessionBtn');
-    const addSessionsModal = document.getElementById('addSessionsModal');
-    const closeAddSessionsBtn = document.getElementById('closeAddSessionsBtn');
-    const cancelAddSessionsBtn = document.getElementById('cancelAddSessionsBtn');
-    const submitAddSessionsBtn = document.getElementById('submitAddSessionsBtn');
-    const additionalSessions = document.getElementById('additionalSessions');
-
-    if (addSessionBtn) {
-        addSessionBtn.addEventListener('click', function() {
-            openAddSessionsModal(selectedPatient);
-        });
-    }
-
-    if (closeAddSessionsBtn && addSessionsModal) {
-        closeAddSessionsBtn.addEventListener('click', function() {
-            addSessionsModal.classList.add('hidden');
-        });
-    }
-
-    if (cancelAddSessionsBtn && addSessionsModal) {
-        cancelAddSessionsBtn.addEventListener('click', function() {
-            addSessionsModal.classList.add('hidden');
-        });
-    }
-
-    if (submitAddSessionsBtn) {
-        submitAddSessionsBtn.addEventListener('click', addSessionToPatient);
-    }
-
-    if (additionalSessions) {
-        additionalSessions.addEventListener('input', function() {
-            const current = parseInt(document.getElementById('currentSessionsDisplay').value) || 0;
-            const additional = parseInt(this.value) || 0;
-            const totalDisplay = document.getElementById('totalSessionsDisplay');
-            if (totalDisplay) {
-                totalDisplay.value = current + additional;
-            }
-        });
-    }
-
     // Boutons radio personnalisés
     document.querySelectorAll('.custom-radio').forEach(radio => {
         radio.addEventListener('click', function() {
@@ -1218,3 +1133,6 @@ function setupModalEventListeners() {
         });
     });
 }
+
+// Exporter la classe PatientAPI pour utilisation dans patient-records.js
+window.PatientAPI = PatientAPI;
