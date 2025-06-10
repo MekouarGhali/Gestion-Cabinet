@@ -1631,6 +1631,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.error("❌ Erreur lors du chargement de la sidebar :", error);
     }
 
+    checkURLParametersCompteRendu();
+
     // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
     setTimeout(() => {
         const sidebar = document.getElementById('sidebar');
@@ -1940,6 +1942,40 @@ function updateSelectedTestsCount() {
     const countElement = document.getElementById('selectedTestsCount');
     if (countElement) {
         countElement.textContent = selectedTests.length;
+    }
+}
+
+function checkURLParametersCompteRendu() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const openModal = urlParams.get('openModal');
+
+    if (openModal === 'new') {
+        console.log('🎯 Paramètre openModal=new détecté - ouverture automatique du modal compte rendu');
+
+        // Attendre que la page soit complètement chargée
+        setTimeout(() => {
+            const newCompteRenduBtn = document.getElementById('newCompteRenduBtn');
+
+            if (newCompteRenduBtn) {
+                console.log('📱 Ouverture automatique du modal nouveau compte rendu');
+
+                // Déclencher l'ouverture du modal comme si on avait cliqué sur le bouton
+                // Utiliser la fonction openNewModal au lieu du clic direct car elle fait plus de choses
+                if (typeof openNewModal === 'function') {
+                    openNewModal();
+                } else {
+                    newCompteRenduBtn.click();
+                }
+
+                // ✅ Nettoyer l'URL pour éviter que le modal se rouvre à chaque rafraîchissement
+                const newURL = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({}, document.title, newURL);
+
+                console.log('✅ Modal compte rendu ouvert et URL nettoyée');
+            } else {
+                console.warn('⚠️ Bouton newCompteRenduBtn non trouvé pour ouverture automatique');
+            }
+        }, 800); // Délai plus long pour s'assurer que tout est chargé
     }
 }
 

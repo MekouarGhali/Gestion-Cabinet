@@ -14,8 +14,6 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
 
     // Méthodes existantes
     List<Patient> findByStatut(String statut);
-    List<Patient> findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCase(String nom, String prenom);
-
     // ===== NOUVELLES MÉTHODES POUR LE DASHBOARD =====
 
     // Compter les patients par statut
@@ -47,6 +45,8 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     @Query("SELECT p FROM Patient p WHERE " +
             "LOWER(p.nom) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(p.prenom) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(CONCAT(p.prenom, ' ', p.nom)) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(CONCAT(p.nom, ' ', p.prenom)) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(p.pathologie) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
             "LOWER(p.telephone) LIKE LOWER(CONCAT('%', :query, '%'))")
     List<Patient> searchPatients(@Param("query") String query);

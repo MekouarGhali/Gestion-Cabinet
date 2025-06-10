@@ -1213,18 +1213,40 @@ async function deleteDevis() {
 // Recherche
 async function searchDevis() {
     const query = document.getElementById('searchInput').value.trim();
+    console.log('🔍 Recherche devis locale:', query);
 
     if (query) {
-        try {
-            const results = await DevisAPI.search(query);
-            // Appliquer les filtres aux résultats de recherche
-            filteredDevis = results;
-            applyAllFilters();
-        } catch (error) {
-            console.error('Erreur lors de la recherche:', error);
-            filteredDevis = [];
-            updateDevisList();
-        }
+        const queryLower = query.toLowerCase();
+
+        const searchResults = allDevis.filter(devis => {
+            const numero = devis.numero || '';
+            const nomPatient = devis.nomPatient || '';
+
+            // Essayer de séparer le nom complet
+            const nomParts = nomPatient.trim().split(/\s+/);
+            const prenom = nomParts[0] || '';
+            const nom = nomParts.slice(1).join(' ') || '';
+
+            return (
+                numero.toLowerCase().includes(queryLower) ||
+                nomPatient.toLowerCase().includes(queryLower) ||
+
+                // ✅ RECHERCHE BIDIRECTIONNELLE si on peut séparer
+                (nomParts.length >= 2 && (
+                    `${prenom} ${nom}`.toLowerCase().includes(queryLower) ||
+                    `${nom} ${prenom}`.toLowerCase().includes(queryLower)
+                ))
+            );
+        });
+
+        console.log(`📈 ${searchResults.length}/${allDevis.length} devis trouvés`);
+
+        // Appliquer les filtres sur les résultats
+        const originalAllDevis = allDevis;
+        allDevis = searchResults;
+        applyAllFilters();
+        allDevis = originalAllDevis;
+
     } else {
         applyAllFilters();
     }

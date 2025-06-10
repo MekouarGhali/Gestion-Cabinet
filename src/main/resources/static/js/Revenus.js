@@ -577,11 +577,7 @@ function renderRevenusTable(revenus) {
                 <div class="flex items-center justify-end space-x-2">
                     <button class="w-8 h-8 flex items-center justify-center text-blue-500 hover:text-blue-700 view-transaction-btn" 
                             data-id="${revenu.id}" title="Voir détails de la transaction">
-                        <i class="ri-eye-line"></i>
-                    </button>
-                    <button class="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-700 open-patient-records-btn" 
-                            data-patient-id="${revenu.patient.id}" title="Ouvrir dossier patient">
-                        <i class="ri-file-text-line"></i>
+                        <i class="ri-eye-line mr-3"></i>
                     </button>
                 </div>
             </td>

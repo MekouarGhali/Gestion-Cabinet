@@ -1370,18 +1370,40 @@ async function deleteFacture() {
 // Recherche
 async function searchFactures() {
     const query = document.getElementById('searchInput').value.trim();
+    console.log('🔍 Recherche factures locale:', query);
 
     if (query) {
-        try {
-            const results = await FactureAPI.search(query);
-            // Appliquer les filtres aux résultats de recherche
-            filteredFactures = results;
-            applyAllFilters();
-        } catch (error) {
-            console.error('Erreur lors de la recherche:', error);
-            filteredFactures = [];
-            updateFacturesList();
-        }
+        const queryLower = query.toLowerCase();
+
+        const searchResults = allFactures.filter(facture => {
+            // Données du patient
+            const patientNom = facture.patient?.nom || '';
+            const patientPrenom = facture.patient?.prenom || '';
+
+            // Autres champs
+            const numero = facture.numero || '';
+            const modePaiement = facture.modePaiement || '';
+
+            return (
+                numero.toLowerCase().includes(queryLower) ||
+                modePaiement.toLowerCase().includes(queryLower) ||
+                patientNom.toLowerCase().includes(queryLower) ||
+                patientPrenom.toLowerCase().includes(queryLower) ||
+
+                // ✅ RECHERCHE BIDIRECTIONNELLE
+                `${patientPrenom} ${patientNom}`.toLowerCase().includes(queryLower) ||
+                `${patientNom} ${patientPrenom}`.toLowerCase().includes(queryLower)
+            );
+        });
+
+        console.log(`📈 ${searchResults.length}/${allFactures.length} factures trouvées`);
+
+        // Appliquer les filtres sur les résultats
+        const originalAllFactures = allFactures;
+        allFactures = searchResults;
+        applyAllFilters();
+        allFactures = originalAllFactures;
+
     } else {
         applyAllFilters();
     }

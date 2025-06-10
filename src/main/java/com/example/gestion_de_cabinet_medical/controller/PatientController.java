@@ -1,6 +1,7 @@
 package com.example.gestion_de_cabinet_medical.controller;
 
 import com.example.gestion_de_cabinet_medical.entity.Patient;
+import com.example.gestion_de_cabinet_medical.repository.SeanceRepository;
 import com.example.gestion_de_cabinet_medical.service.PatientService;
 import com.example.gestion_de_cabinet_medical.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class PatientController {
 
     private final PatientService service;
     private final PatientRepository repository; // ✅ Injection directe du repository
+    private final SeanceRepository seanceRepository;
 
     @GetMapping
     public List<Patient> getAll() {
@@ -70,15 +72,26 @@ public class PatientController {
                 return ResponseEntity.notFound().build();
             }
 
-            // ✅ AMÉLIORATION : Mettre à jour avec l'heure actuelle
+            // ✅ AMÉLIORATION 1: Mettre à jour avec l'heure actuelle
             LocalDate maintenant = LocalDate.now();
             patient.setDerniereVisite(maintenant);
 
-            // ✅ AMÉLIORATION : Sauvegarde directe optimisée
+            // ✅ AMÉLIORATION 2: Recalculer automatiquement les séances effectuées
+            Long seancesEffectuees = seanceRepository.countSeancesEffectueesForPatient(id);
+            patient.setSeancesEffectuees(seancesEffectuees.intValue());
+
+            // ✅ AMÉLIORATION 3: Mettre à jour le statut du patient
+            if (patient.getSeancesEffectuees() >= patient.getSeancesPrevues() && patient.getSeancesPrevues() > 0) {
+                patient.setStatut("inactif");
+            } else if (patient.getSeancesEffectuees() > 0) {
+                patient.setStatut("actif");
+            }
+
+            // ✅ AMÉLIORATION 4: Sauvegarde directe optimisée
             Patient updated = repository.save(patient);
 
-            log.info("✅ Patient {} {} mis à jour avec dernière visite: {}",
-                    updated.getPrenom(), updated.getNom(), updated.getDerniereVisite());
+            log.info("✅ Patient {} {} mis à jour avec dernière visite: {} et {} séances effectuées",
+                    updated.getPrenom(), updated.getNom(), updated.getDerniereVisite(), updated.getSeancesEffectuees());
 
             return ResponseEntity.ok(updated);
 

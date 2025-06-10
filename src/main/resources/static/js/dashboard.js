@@ -1685,11 +1685,20 @@ function setupGlobalSearch() {
             try {
                 // Rechercher dans tous les patients
                 const patients = allPatients.length > 0 ? allPatients : await PatientAPI.getAll();
-                const filteredPatients = patients.filter(patient =>
-                    patient.nom.toLowerCase().includes(query.toLowerCase()) ||
-                    patient.prenom.toLowerCase().includes(query.toLowerCase()) ||
-                    patient.pathologie?.toLowerCase().includes(query.toLowerCase())
-                );
+                const filteredPatients = patients.filter(patient => {
+                    const queryLower = query.toLowerCase();
+
+                    return (
+                        // Recherches existantes (gardées)
+                        patient.nom.toLowerCase().includes(queryLower) ||
+                        patient.prenom.toLowerCase().includes(queryLower) ||
+                        patient.pathologie?.toLowerCase().includes(queryLower) ||
+
+                        // ✅ NOUVELLES : nom complet
+                        `${patient.prenom} ${patient.nom}`.toLowerCase().includes(queryLower) ||
+                        `${patient.nom} ${patient.prenom}`.toLowerCase().includes(queryLower)
+                    );
+                });
 
                 // Afficher les résultats dans le dropdown
                 if (filteredPatients.length > 0) {
@@ -1784,8 +1793,8 @@ function setupNewPatientButton() {
     const newPatientBtn = document.getElementById('newPatientBtn');
     if (newPatientBtn) {
         newPatientBtn.addEventListener('click', () => {
-            // Redirection vers la page de création de patient
-            window.location.href = '/patients/page';
+            // ✅ REDIRECTION avec paramètre pour ouvrir automatiquement le modal
+            window.location.href = '/patient.html?openModal=new';
         });
     }
 }

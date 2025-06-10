@@ -1272,8 +1272,9 @@ function setupPatientRecordButtons(patient) {
         const refreshedAnamneseBtn = document.getElementById('newAnamneseForPatientBtn');
 
         refreshedAnamneseBtn.addEventListener('click', function() {
-            console.log('🔗 Redirection vers anamnèse pour patient ID:', patient.id);
-            window.location.href = `/anamnese.html?patientId=${patient.id}`;
+            console.log('🔗 Redirection vers anamnèse (formulaire vide)');
+            // ✅ SIMPLE: Redirection avec paramètre pour ouvrir automatiquement le modal
+            window.location.href = '/anamnese.html?openModal=new';
         });
     }
 
@@ -1283,12 +1284,13 @@ function setupPatientRecordButtons(patient) {
         const refreshedCompteRenduBtn = document.getElementById('newCompteRenduForPatientBtn');
 
         refreshedCompteRenduBtn.addEventListener('click', function() {
-            console.log('🔗 Redirection vers compte rendu pour patient ID:', patient.id);
-            window.location.href = `/compte-rendu.html?patientId=${patient.id}`;
+            console.log('🔗 Redirection vers compte rendu (formulaire vide)');
+            // ✅ SIMPLE: Redirection avec paramètre pour ouvrir automatiquement le modal
+            window.location.href = '/compte-rendu.html?openModal=new';
         });
     }
 
-    // ===== CONFIGURATION DU BOUTON AJOUTER SÉANCE =====
+    // ===== CONFIGURATION DU BOUTON AJOUTER SÉANCE (inchangé) =====
     const addSessionBtn = document.getElementById('addSessionBtn');
     if (addSessionBtn) {
         // Supprimer les anciens event listeners
@@ -1301,13 +1303,13 @@ function setupPatientRecordButtons(patient) {
         });
     }
 
-    // Configurer les onglets des dossiers
+    // Configurer les onglets des dossiers (inchangé)
     document.querySelectorAll('.records-tab-button').forEach(button => {
         // Supprimer les anciens event listeners
         button.replaceWith(button.cloneNode(true));
     });
 
-    // Réattacher les event listeners pour les onglets
+    // Réattacher les event listeners pour les onglets (inchangé)
     document.querySelectorAll('.records-tab-button').forEach(button => {
         button.addEventListener('click', function() {
             const tabName = this.dataset.tab;
@@ -1334,7 +1336,7 @@ function setupPatientRecordButtons(patient) {
         });
     });
 
-    // Configurer la fermeture du modal
+    // Configurer la fermeture du modal (inchangé)
     const closeRecordsModalBtn = document.getElementById('closeRecordsModalBtn');
     if (closeRecordsModalBtn) {
         closeRecordsModalBtn.replaceWith(closeRecordsModalBtn.cloneNode(true));

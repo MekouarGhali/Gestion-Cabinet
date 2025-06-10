@@ -23,7 +23,7 @@ public class PatientService {
     }
 
     public List<Patient> search(String query) {
-        return repository.findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCase(query, query);
+        return repository.searchPatients(query); // ✅ Utilise la méthode searchPatients
     }
 
     public Patient create(Patient patient) {

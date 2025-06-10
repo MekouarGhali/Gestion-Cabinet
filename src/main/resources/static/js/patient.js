@@ -870,6 +870,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.error("❌ Erreur lors du chargement de la sidebar :", error);
     }
 
+    checkURLParameters();
+
     // 3. Attendre que la sidebar soit chargée puis configurer les event listeners
     setTimeout(() => {
         const sidebar = document.getElementById('sidebar');
@@ -1006,6 +1008,36 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     console.log('✅ Initialisation terminée');
 });
+
+function checkURLParameters() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const openModal = urlParams.get('openModal');
+
+    if (openModal === 'new') {
+        console.log('🎯 Paramètre openModal=new détecté - ouverture automatique du modal');
+
+        // Attendre que la page soit complètement chargée
+        setTimeout(() => {
+            const newPatientModal = document.getElementById('newPatientModal');
+            const newPatientBtn = document.getElementById('newPatientBtn');
+
+            if (newPatientModal && newPatientBtn) {
+                console.log('📱 Ouverture automatique du modal nouveau patient');
+
+                // Déclencher l'ouverture du modal comme si on avait cliqué sur le bouton
+                newPatientBtn.click();
+
+                // ✅ Nettoyer l'URL pour éviter que le modal se rouvre à chaque rafraîchissement
+                const newURL = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({}, document.title, newURL);
+
+                console.log('✅ Modal ouvert et URL nettoyée');
+            } else {
+                console.warn('⚠️ Éléments modal non trouvés pour ouverture automatique');
+            }
+        }, 500); // Délai pour s'assurer que tous les éléments sont chargés
+    }
+}
 
 function setupModalEventListeners() {
     console.log('⚙️ Configuration des event listeners pour les modals...');

@@ -216,8 +216,10 @@ const themeStyles = `
     --text-primary: #1f2937;
     --text-secondary: #6b7280;
     --text-tertiary: #9ca3af;
-    --border-primary: #e5e7eb;
-    --border-secondary: #d1d5db;
+    /* ✅ BORDURES MISES À JOUR - Plus sombres */
+    --border-primary: #d1d5db;   /* Plus sombre que #e5e7eb */
+    --border-secondary: #9ca3af; /* Plus sombre que #d1d5db */
+    --border-light: #e5e7eb;     /* Nouvelle variable pour bordures très légères */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -234,8 +236,10 @@ const themeStyles = `
     --text-primary: #f9fafb;
     --text-secondary: #d1d5db;
     --text-tertiary: #9ca3af;
-    --border-primary: #374151;
-    --border-secondary: #4b5563;
+    /* ✅ BORDURES MISES À JOUR - Plus visibles en mode sombre */
+    --border-primary: #4b5563;   /* Plus clair que #374151 */
+    --border-secondary: #6b7280; /* Plus clair que #4b5563 */
+    --border-light: #374151;     /* Bordures légères */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
@@ -299,7 +303,7 @@ body {
     color: var(--text-tertiary) !important;
 }
 
-/* Bordures */
+/* ✅ BORDURES MISES À JOUR */
 .border-gray-200 {
     border-color: var(--border-primary) !important;
 }
@@ -308,19 +312,46 @@ body {
     border-color: var(--border-secondary) !important;
 }
 
+.border-gray-100 {
+    border-color: var(--border-light) !important;
+}
+
+/* ✅ NOUVELLES CLASSES POUR BORDURES SPÉCIFIQUES */
+.border-primary {
+    border-color: var(--border-primary) !important;
+}
+
+.border-secondary {
+    border-color: var(--border-secondary) !important;
+}
+
+/* ✅ CARTES ET CONTAINERS - Bordures plus visibles */
 .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-    border-color: var(--border-primary);
+    border-color: var(--border-primary) !important;
 }
 
 .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
-    border-color: var(--border-primary);
+    border-color: var(--border-primary) !important;
+}
+
+/* ✅ TABLES - Bordures plus visibles */
+table {
+    border-color: var(--border-primary) !important;
+}
+
+thead th {
+    border-bottom-color: var(--border-secondary) !important;
+}
+
+tbody tr {
+    border-bottom-color: var(--border-primary) !important;
 }
 
 /* Inputs et formulaires */
 input, select, textarea {
     background-color: var(--bg-primary) !important;
     color: var(--text-primary) !important;
-    border-color: var(--border-secondary) !important;
+    border-color: var(--border-secondary) !important; /* ✅ Plus sombre */
 }
 
 input:focus, select:focus, textarea:focus {
@@ -341,6 +372,15 @@ input:focus, select:focus, textarea:focus {
     color: var(--primary) !important;
 }
 
+/* ✅ BOUTONS AVEC BORDURES */
+button {
+    border-color: var(--border-secondary) !important;
+}
+
+.btn-outline {
+    border-color: var(--border-secondary) !important;
+}
+
 /* Sidebar */
 aside {
     background-color: var(--bg-primary) !important;
@@ -353,13 +393,19 @@ header {
     border-color: var(--border-primary) !important;
 }
 
-/* Cards et containers */
+/* ✅ CARDS - Bordures plus visibles */
+.rounded-lg, .rounded-md, .card {
+    border: 1px solid var(--border-primary) !important;
+}
+
 .shadow-sm {
     box-shadow: var(--shadow-sm) !important;
+    border: 1px solid var(--border-primary) !important;
 }
 
 .shadow-md {
     box-shadow: var(--shadow-md) !important;
+    border: 1px solid var(--border-primary) !important;
 }
 
 .shadow-lg {
@@ -379,7 +425,7 @@ header {
     background-color: var(--bg-tertiary) !important;
 }
 
-/* ✅ AJOUT : Appliquer le même hover aux boutons burger */
+/* ✅ APPLIQUER LE MÊME HOVER AUX BOUTONS BURGER */
 .burger-btn:hover {
     background-color: var(--bg-tertiary) !important;
 }
@@ -389,7 +435,7 @@ header {
     background-color: var(--bg-tertiary) !important;
 }
 
-/* ✅ AJOUT ICI - Page active sidebar */
+/* ✅ PAGE ACTIVE SIDEBAR */
 .sidebar-fixed a.active,
 aside a.active,
 .text-primary.bg-blue-50{
@@ -415,12 +461,11 @@ aside a.active:hover {
     background-color: rgba(99, 102, 241, 0.2) !important;
 }
 
-/* Tables */
-.divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-    border-color: var(--border-primary) !important;
+/* ✅ MODALS - Bordures plus visibles */
+.modal {
+    border: 1px solid var(--border-primary) !important;
 }
 
-/* Modals */
 .bg-black {
     background-color: rgba(0, 0, 0, 0.5) !important;
 }
@@ -434,22 +479,26 @@ aside a.active:hover {
     background-color: var(--bg-primary) !important;
     color: var(--text-primary) !important;
     box-shadow: var(--shadow-lg) !important;
+    border: 1px solid var(--border-primary) !important;
 }
 
 /* Status badges - garder les couleurs originales */
 .status-actif {
     background-color: rgba(16, 185, 129, 0.1) !important;
     color: rgb(16, 185, 129) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
 }
 
 .status-inactif {
     background-color: rgba(107, 114, 128, 0.1) !important;
     color: rgb(107, 114, 128) !important;
+    border: 1px solid rgba(107, 114, 128, 0.3) !important;
 }
 
 .status-nouveau {
     background-color: rgba(245, 158, 11, 0.1) !important;
     color: rgb(245, 158, 11) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
 }
 
 /* Transitions pour tous les éléments */
@@ -479,31 +528,105 @@ aside a.active:hover {
     filter: brightness(0.95);
 }
 
-/* Dropdown menus */
+/* ✅ DROPDOWN MENUS - Bordures plus visibles */
 .dropdown-menu {
     background-color: var(--bg-primary) !important;
-    border-color: var(--border-primary) !important;
+    border: 1px solid var(--border-primary) !important;
+    box-shadow: var(--shadow-md) !important;
+}
+
+.dropdown-item {
+    border-bottom: 1px solid var(--border-light) !important;
 }
 
 .dropdown-item:hover {
     background-color: var(--bg-tertiary) !important;
 }
 
-/* Tab buttons */
+/* ✅ TAB BUTTONS - Bordures plus visibles */
 .tab-button {
     background-color: var(--bg-tertiary) !important;
     color: var(--text-secondary) !important;
+    border: 1px solid var(--border-primary) !important;
 }
 
 .tab-button.active {
     background-color: var(--primary) !important;
     color: white !important;
+    border-color: var(--primary) !important;
 }
 
-/* Grid view cards */
+/* ✅ GRID VIEW CARDS - Bordures plus visibles */
 .grid-view-card {
     background-color: var(--bg-primary) !important;
+    border: 1px solid var(--border-primary) !important;
+}
+
+.grid-view-card:hover {
+    border-color: var(--border-secondary) !important;
+}
+
+/* ✅ PAGINATION */
+.pagination button {
+    border: 1px solid var(--border-secondary) !important;
+}
+
+/* ✅ SEARCH INPUT */
+.search-input {
+    border: 1px solid var(--border-secondary) !important;
+}
+
+/* ✅ FORM GROUPS */
+.form-group {
+    border: 1px solid var(--border-primary) !important;
+}
+
+/* ✅ SECTIONS ET CONTAINERS */
+.section {
+    border: 1px solid var(--border-primary) !important;
+}
+
+.container {
     border-color: var(--border-primary) !important;
+}
+
+/* ✅ SPÉCIFIQUE AUX ÉLÉMENTS AVEC BORDER-GRAY */
+.border-gray-50 {
+    border-color: var(--border-light) !important;
+}
+
+.border-gray-400 {
+    border-color: var(--border-secondary) !important;
+}
+
+.border-gray-500 {
+    border-color: var(--border-secondary) !important;
+}
+
+/* ✅ FORCE L'APPLICATION DES BORDURES */
+[class*="border-"] {
+    border-color: var(--border-primary) !important;
+}
+
+/* ✅ OVERRIDE POUR LES BORDURES IMPORTANTES */
+.border {
+    border: 1px solid var(--border-primary) !important;
+}
+
+.border-t {
+    border-top: 1px solid var(--border-primary) !important;
+}
+
+.border-b {
+    border-bottom: 1px solid var(--border-primary) !important;
+}
+
+.border-l {
+    border-left: 1px solid var(--border-primary) !important;
+}
+
+.border-r {
+    border-right: 1px solid var(--border-primary) !important;
 }
 `;
 
