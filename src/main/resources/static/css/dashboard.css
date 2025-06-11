@@ -62,7 +62,7 @@ body {
 .burger-btn {
     display: flex;
     cursor: pointer;
-    padding: 8px;
+    padding: 2px;
     border-radius: var(--border-radius);
     transition: var(--transition);
 }

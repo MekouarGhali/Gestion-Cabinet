@@ -394,18 +394,13 @@ header {
 }
 
 /* ✅ CARDS - Bordures plus visibles */
-.rounded-lg, .rounded-md, .card {
-    border: 1px solid var(--border-primary) !important;
-}
 
 .shadow-sm {
     box-shadow: var(--shadow-sm) !important;
-    border: 1px solid var(--border-primary) !important;
 }
 
 .shadow-md {
     box-shadow: var(--shadow-md) !important;
-    border: 1px solid var(--border-primary) !important;
 }
 
 .shadow-lg {
@@ -461,11 +456,26 @@ aside a.active:hover {
     background-color: rgba(99, 102, 241, 0.2) !important;
 }
 
-/* ✅ MODALS - Bordures plus visibles */
-.modal {
-    border: 1px solid var(--border-primary) !important;
+.modal-content {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
 }
 
+.modal-header {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal-body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal-footer {
+    background-color: var(--bg-primary) !important;
+}
+
+/* ✅ MODAL OVERLAY */
 .bg-black {
     background-color: rgba(0, 0, 0, 0.5) !important;
 }
@@ -474,31 +484,185 @@ aside a.active:hover {
     background-color: rgba(0, 0, 0, 0.7) !important;
 }
 
+/* ✅ MODAL SPÉCIFIQUE - OVERLAY FIXE */
+.fixed.inset-0.bg-black {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.theme-dark .fixed.inset-0.bg-black {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ✅ MODAL BACKGROUNDS - Force l'application */
+#addTaskModal .modal-content,
+#allAppointmentsModal .modal-content,
+#allPatientsModal .modal-content,
+#patientRecordsModal > div {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ✅ MODAL HEADERS SPÉCIFIQUES */
+#addTaskModal .modal-header,
+#allAppointmentsModal .modal-header,
+#allPatientsModal .modal-header {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ✅ MODAL TITLES */
+.modal h3,
+.modal-header h3 {
+    color: var(--text-primary) !important;
+}
+
+/* ✅ MODAL CLOSE BUTTONS */
+.modal button[id*="close"],
+.modal .text-gray-400 {
+    color: var(--text-secondary) !important;
+}
+
+.modal button[id*="close"]:hover,
+.modal .text-gray-400:hover {
+    color: var(--text-primary) !important;
+}
+
+/* ✅ LABELS ET FORM ELEMENTS DANS MODAUX */
+.modal label,
+.modal-body label {
+    color: var(--text-secondary) !important;
+}
+
+/* ✅ FORM CONTROLS DANS MODAUX */
+.modal input,
+.modal select,
+.modal textarea {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus {
+    background-color: var(--bg-primary) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px var(--primary-light) !important;
+}
+
+/* ✅ MODAL TABLES */
+.modal table {
+    background-color: var(--bg-primary) !important;
+}
+
+.modal thead th {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-secondary) !important;
+}
+
+.modal tbody td {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal tbody tr:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* ✅ MODAL DIVIDERS */
+.modal .divide-y > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--border-primary) !important;
+}
+
+/* ✅ MODAL BUTTONS SPÉCIFIQUES */
+.modal .bg-primary {
+    background-color: var(--primary) !important;
+    color: white !important;
+}
+
+.modal .bg-primary:hover {
+    background-color: var(--primary-hover) !important;
+}
+
+.modal .border-gray-300 {
+    border-color: var(--border-secondary) !important;
+}
+
+.modal .text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+.modal .hover\\:bg-gray-50:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* ✅ SPECIFIC MODAL IDS - FORCE APPLICATION */
+#addTaskModal,
+#allAppointmentsModal,
+#allPatientsModal,
+#patientRecordsModal {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.theme-dark #addTaskModal,
+.theme-dark #allAppointmentsModal,
+.theme-dark #allPatientsModal,
+.theme-dark #patientRecordsModal {
+    background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ✅ MODAL CONTENT CONTAINERS */
+#addTaskModal .bg-white,
+#allAppointmentsModal .bg-white,
+#allPatientsModal .bg-white,
+#patientRecordsModal .bg-white {
+    background-color: var(--bg-primary) !important;
+}
+
+/* ✅ MODAL LOADING STATES */
+.modal .animate-spin {
+    border-color: var(--border-primary) !important;
+    border-top-color: var(--primary) !important;
+}
+
+
+/* ✅ TEXT COLORS IN MODALS */
+.modal .text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+.modal .text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
+.modal .text-gray-500 {
+    color: var(--text-tertiary) !important;
+}
+
+.modal .text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+
 /* Notifications */
 .notification {
     background-color: var(--bg-primary) !important;
     color: var(--text-primary) !important;
     box-shadow: var(--shadow-lg) !important;
-    border: 1px solid var(--border-primary) !important;
 }
 
 /* Status badges - garder les couleurs originales */
 .status-actif {
     background-color: rgba(16, 185, 129, 0.1) !important;
     color: rgb(16, 185, 129) !important;
-    border: 1px solid rgba(16, 185, 129, 0.3) !important;
 }
 
 .status-inactif {
     background-color: rgba(107, 114, 128, 0.1) !important;
     color: rgb(107, 114, 128) !important;
-    border: 1px solid rgba(107, 114, 128, 0.3) !important;
 }
 
 .status-nouveau {
     background-color: rgba(245, 158, 11, 0.1) !important;
     color: rgb(245, 158, 11) !important;
-    border: 1px solid rgba(245, 158, 11, 0.3) !important;
 }
 
 /* Transitions pour tous les éléments */
@@ -531,12 +695,7 @@ aside a.active:hover {
 /* ✅ DROPDOWN MENUS - Bordures plus visibles */
 .dropdown-menu {
     background-color: var(--bg-primary) !important;
-    border: 1px solid var(--border-primary) !important;
     box-shadow: var(--shadow-md) !important;
-}
-
-.dropdown-item {
-    border-bottom: 1px solid var(--border-light) !important;
 }
 
 .dropdown-item:hover {
@@ -547,86 +706,143 @@ aside a.active:hover {
 .tab-button {
     background-color: var(--bg-tertiary) !important;
     color: var(--text-secondary) !important;
-    border: 1px solid var(--border-primary) !important;
 }
 
 .tab-button.active {
     background-color: var(--primary) !important;
     color: white !important;
-    border-color: var(--primary) !important;
 }
 
 /* ✅ GRID VIEW CARDS - Bordures plus visibles */
 .grid-view-card {
     background-color: var(--bg-primary) !important;
-    border: 1px solid var(--border-primary) !important;
 }
 
-.grid-view-card:hover {
-    border-color: var(--border-secondary) !important;
-}
-
-/* ✅ PAGINATION */
-.pagination button {
-    border: 1px solid var(--border-secondary) !important;
-}
-
-/* ✅ SEARCH INPUT */
-.search-input {
-    border: 1px solid var(--border-secondary) !important;
-}
-
-/* ✅ FORM GROUPS */
-.form-group {
-    border: 1px solid var(--border-primary) !important;
-}
-
-/* ✅ SECTIONS ET CONTAINERS */
-.section {
-    border: 1px solid var(--border-primary) !important;
-}
-
-.container {
+.facture-preview,
+.devis-preview,
+#facturePreview,
+#devisPreview {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
     border-color: var(--border-primary) !important;
 }
 
-/* ✅ SPÉCIFIQUE AUX ÉLÉMENTS AVEC BORDER-GRAY */
-.border-gray-50 {
-    border-color: var(--border-light) !important;
+.printed-facture,
+.printed-devis,
+#printableArea {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
 }
 
-.border-gray-400 {
-    border-color: var(--border-secondary) !important;
-}
-
-.border-gray-500 {
-    border-color: var(--border-secondary) !important;
-}
-
-/* ✅ FORCE L'APPLICATION DES BORDURES */
-[class*="border-"] {
+/* Aperçu - Tableaux */
+.facture-preview table,
+.devis-preview table,
+.printed-facture table,
+.printed-devis table {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
     border-color: var(--border-primary) !important;
 }
 
-/* ✅ OVERRIDE POUR LES BORDURES IMPORTANTES */
-.border {
+.facture-preview th,
+.devis-preview th,
+.printed-facture th,
+.printed-devis th {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.facture-preview td,
+.devis-preview td,
+.printed-facture td,
+.printed-devis td {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.facture-preview tbody tr:hover,
+.devis-preview tbody tr:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.facture-preview tfoot td,
+.devis-preview tfoot td {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    font-weight: bold;
+}
+
+/* Aperçu - Titres et textes */
+.facture-preview h1,
+.devis-preview h1,
+.printed-facture h1,
+.printed-devis h1 {
+    color: var(--text-primary) !important;
+}
+
+.facture-preview p,
+.devis-preview p,
+.printed-facture p,
+.printed-devis p {
+    color: var(--text-primary) !important;
+}
+
+.facture-preview strong,
+.devis-preview strong,
+.printed-facture strong,
+.printed-devis strong {
+    color: var(--text-primary) !important;
+}
+
+/* Bouton de fermeture de l'aperçu */
+#closePreviewBtn {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-secondary) !important;
+}
+
+#closePreviewBtn:hover {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* ✅ MODAL CONTENT CONTAINERS */
+#addTaskModal .bg-white,
+#allAppointmentsModal .bg-white,
+#allPatientsModal .bg-white,
+#patientRecordsModal .bg-white {
+    background-color: var(--bg-primary) !important;
+}
+
+/* ✅ TESTS UTILISÉS - Visibilité améliorée en mode sombre */
+.test-item {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
     border: 1px solid var(--border-primary) !important;
 }
 
-.border-t {
-    border-top: 1px solid var(--border-primary) !important;
+.theme-dark .test-item {
+    background-color: rgba(75, 85, 99, 0.3) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-secondary) !important;
 }
 
-.border-b {
-    border-bottom: 1px solid var(--border-primary) !important;
+/* ✅ GRID DE TESTS */
+.test-grid .test-item {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--border-primary) !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
 }
 
-.border-l {
-    border-left: 1px solid var(--border-primary) !important;
-}
-
-.border-r {
-    border-right: 1px solid var(--border-primary) !important;
+.theme-dark .test-grid .test-item {
+    background-color: rgba(75, 85, 99, 0.4) !important;
+    color: #f3f4f6 !important;
+    border-color: var(--border-secondary) !important;
 }
 `;
 

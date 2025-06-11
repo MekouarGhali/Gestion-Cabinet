@@ -744,6 +744,18 @@ function updatePatientFields(searchInputId, patient) {
     }
 }
 
+function initializeDateBilan() {
+    console.log('📅 Initialisation de la date du bilan');
+
+    // Définir la date du bilan à aujourd'hui pour le nouveau formulaire
+    const dateBilanField = document.getElementById('dateBilan');
+    if (dateBilanField && !dateBilanField.value) {
+        const today = new Date();
+        dateBilanField.value = today.toISOString().split('T')[0];
+        console.log('✅ Date du bilan initialisée à:', dateBilanField.value);
+    }
+}
+
 function clearPatientFields(searchInputId) {
     console.log('🗑️ Effacement des données patient pour:', searchInputId);
 
@@ -1017,9 +1029,8 @@ async function openNewModal() {
         const numero = await CompteRenduAPI.generateNumero();
         document.getElementById('numCompteRendu').value = numero;
 
-        // Définir la date du bilan à aujourd'hui
-        const today = new Date();
-        document.getElementById('dateBilan').value = today.toISOString().split('T')[0];
+        // ✅ CORRECTION: Initialiser la date du bilan à aujourd'hui
+        initializeDateBilan();
 
         resetNewForm();
         document.getElementById('newCompteRenduModal').classList.remove('hidden');
@@ -1277,8 +1288,11 @@ function initEditFormEventListeners() {
         });
     });
 
-    // Réinitialiser la recherche de patients pour l'édition
-    initPatientSearch('editPatientSearch', 'editPatientOptions', 'editPatientId', 'editPatientClear');
+    setTimeout(() => {
+        initPatientSearch('editPatientSearch', 'editPatientOptions', 'editPatientId', 'editPatientClear');
+        console.log('✅ Recherche patient réinitialisée pour l\'édition');
+    }, 200);
+
 }
 
 function toggleEditSection(sectionName) {
@@ -1315,6 +1329,10 @@ function updateTestsCheckboxes(prefix = '') {
 function resetNewForm() {
     // Réinitialiser tous les champs du formulaire
     document.getElementById('newCompteRenduForm').reset();
+
+    setTimeout(() => {
+        initializeDateBilan();
+    }, 100);
 
     // Réinitialiser la recherche patient
     document.getElementById('patientSearch').value = '';
@@ -1668,6 +1686,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
+    setTimeout(() => {
+        initializeDateBilan();
+    }, 500);
+
     // 4. Configurer les filtres
     document.querySelectorAll('.tab-button').forEach(button => {
         button.addEventListener('click', function () {
@@ -1712,6 +1734,39 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     console.log('✅ Initialisation terminée');
 });
+
+function clearPatientFields(searchInputId) {
+    console.log('🗑️ Effacement des données patient pour:', searchInputId);
+
+    // Déterminer le préfixe
+    let prefix = '';
+    if (searchInputId.includes('edit')) {
+        prefix = 'edit';
+    }
+
+    // Essayer de trouver les champs avec et sans préfixe
+    const fieldsToTry = [
+        { id: prefix ? `${prefix}NomPatient` : 'nomPatient', fallback: 'nomPatient' },
+        { id: prefix ? `${prefix}DateNaissance` : 'dateNaissance', fallback: 'dateNaissance' }
+    ];
+
+    fieldsToTry.forEach(fieldConfig => {
+        let field = document.getElementById(fieldConfig.id);
+
+        // Si pas trouvé avec préfixe, essayer sans
+        if (!field && fieldConfig.fallback) {
+            field = document.getElementById(fieldConfig.fallback);
+        }
+
+        if (field) {
+            field.value = '';
+            field.classList.remove('border-red-500');
+            console.log(`✅ Champ ${fieldConfig.id} effacé`);
+        } else {
+            console.warn(`⚠️ Champ ${fieldConfig.id} non trouvé pour effacement`);
+        }
+    });
+}
 
 function setupModalEventListeners() {
     // Modal nouveau compte rendu
@@ -1959,12 +2014,13 @@ function checkURLParametersCompteRendu() {
             if (newCompteRenduBtn) {
                 console.log('📱 Ouverture automatique du modal nouveau compte rendu');
 
-                // Déclencher l'ouverture du modal comme si on avait cliqué sur le bouton
-                // Utiliser la fonction openNewModal au lieu du clic direct car elle fait plus de choses
+                // Utiliser la fonction openNewModal qui initialise déjà la date
                 if (typeof openNewModal === 'function') {
                     openNewModal();
                 } else {
                     newCompteRenduBtn.click();
+                    // ✅ FALLBACK: Initialiser la date si la fonction n'est pas disponible
+                    setTimeout(initializeDateBilan, 200);
                 }
 
                 // ✅ Nettoyer l'URL pour éviter que le modal se rouvre à chaque rafraîchissement

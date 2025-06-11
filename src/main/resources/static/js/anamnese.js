@@ -2701,6 +2701,35 @@ function verifyEditFormStructure() {
     };
 }
 
+function checkURLParametersAnamnese() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const openModal = urlParams.get('openModal');
+
+    if (openModal === 'new') {
+        console.log('🎯 Paramètre openModal=new détecté - ouverture automatique du modal anamnèse');
+
+        // Attendre que la page soit complètement chargée
+        setTimeout(() => {
+            const newAnamneseBtn = document.getElementById('newAnamneseBtn');
+
+            if (newAnamneseBtn) {
+                console.log('📱 Ouverture automatique du modal nouvelle anamnèse');
+
+                // Déclencher l'ouverture du modal comme si on avait cliqué sur le bouton
+                newAnamneseBtn.click();
+
+                // ✅ Nettoyer l'URL pour éviter que le modal se rouvre à chaque rafraîchissement
+                const newURL = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({}, document.title, newURL);
+
+                console.log('✅ Modal anamnèse ouvert et URL nettoyée');
+            } else {
+                console.warn('⚠️ Bouton newAnamneseBtn non trouvé pour ouverture automatique');
+            }
+        }, 500); // Délai pour s'assurer que tous les éléments sont chargés
+    }
+}
+
 // Gestion des erreurs globales
 window.addEventListener('error', function(e) {
     console.error('Erreur JavaScript:', e.error);
@@ -2715,6 +2744,15 @@ window.addEventListener('unhandledrejection', function(e) {
 
 // Initialiser la page quand le DOM est chargé
 document.addEventListener('DOMContentLoaded', initializePage);
+
+document.addEventListener('DOMContentLoaded', async function () {
+    console.log('🚀 Initialisation de la page anamnèse...');
+
+    // 2. ✅ NOUVEAU : Vérifier les paramètres URL pour ouverture automatique de modal
+    checkURLParametersAnamnese();
+
+    console.log('✅ Initialisation anamnèse terminée');
+});
 
 // Exposer les fonctions globalement si nécessaire
 window.toggleSection = toggleSection;
