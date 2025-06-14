@@ -860,7 +860,7 @@ function removeAppointmentFromDisplay(appointmentId) {
 
     // ✅ SOLUTION IMMÉDIATE : Déplacer le patient en premier dans la liste
     if (patientToMoveFirst) {
-        movePatientToFirst(patientToMoveFirst);
+        updatePatientInRecentList(patientToMoveFirst.id);
     }
 }
 
@@ -897,6 +897,19 @@ function movePatientToFirst(patientData) {
 
     } catch (error) {
         console.error('❌ Erreur lors du déplacement du patient:', error);
+    }
+}
+
+async function updatePatientInRecentList(patientId) {
+    try {
+        // Récupérer les données fraîches du patient
+        const response = await fetch(`${API_BASE_URL}/patients/${patientId}`);
+        const updatedPatient = await response.json();
+
+        // Mettre à jour dans la liste
+        movePatientToFirst(updatedPatient);
+    } catch (error) {
+        console.error('Erreur mise à jour patient:', error);
     }
 }
 
@@ -949,11 +962,40 @@ function setupAppointmentEventListeners() {
 
     // Boutons de confirmation
     document.querySelectorAll('.confirm-apt-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', async function(e) {  // ✅ Ajouté async
             e.stopPropagation();
             const aptId = this.dataset.id;
 
-            // ✅ DEBUG : Vérifier la structure
+            // ✅ NOUVEAU : Récupérer le type de RDV
+            const appointment = allAppointments.find(apt => apt.id === parseInt(aptId));
+
+            // ✅ NOUVEAU : Si c'est ANAMNESE ou COMPTE_RENDU, confirmer directement
+            if (appointment && (appointment.type === 'ANAMNESE' || appointment.type === 'COMPTE_RENDU')) {
+                try {
+                    console.log('🎯 Confirmation directe pour type:', appointment.type);
+
+                    // Terminer le RDV directement
+                    await RendezVousAPI.updateStatus(aptId, 'terminer');
+                    console.log('✅ RDV terminé avec succès');
+
+                    // Mettre à jour la dernière visite du patient
+                    if (appointment.patient && appointment.patient.id) {
+                        console.log('🔄 Mise à jour dernière visite du patient...');
+                        await PatientAPI.updateLastVisit(appointment.patient.id);
+                        console.log('✅ Dernière visite mise à jour');
+                    }
+
+                    showNotification('success', 'Rendez-vous confirmé avec succès');
+                    removeAppointmentFromDisplay(aptId);
+
+                } catch (error) {
+                    console.error('❌ Erreur confirmation directe:', error);
+                    showNotification('error', 'Erreur lors de la confirmation du rendez-vous: ' + error.message);
+                }
+                return; // ✅ IMPORTANT : Sortir de la fonction ici
+            }
+
+            // ✅ ANCIEN CODE : Pour les SEANCES, afficher le champ observation
             debugAppointmentStructure(aptId);
 
             const container = document.getElementById(`confirmContainer-${aptId}`);

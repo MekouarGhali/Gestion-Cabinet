@@ -543,6 +543,49 @@ function addCompteRenduEventListeners() {
     });
 }
 
+async function printAnamneseFromList(anamneseId) {
+    try {
+        console.log('🖨️ Impression anamnèse ID:', anamneseId, 'depuis la liste');
+        const anamnese = await PatientRecordsAnamneseAPI.getById(anamneseId);
+
+        if (anamnese) {
+            await printAnamnese(anamneseId);
+        } else {
+            console.error('❌ Anamnèse non trouvée pour impression');
+            if (typeof showNotification === 'function') {
+                showNotification('error', 'Anamnèse non trouvée');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erreur impression anamnèse:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('error', 'Erreur lors de l\'impression');
+        }
+    }
+}
+
+// Fonction d'impression globale pour compte rendu (utilisable depuis compte-rendu.js)
+async function printCompteRenduFromList(compteRenduId) {
+    try {
+        console.log('🖨️ Impression compte rendu ID:', compteRenduId, 'depuis la liste');
+        const compteRendu = await PatientRecordsCompteRenduAPI.getById(compteRenduId);
+
+        if (compteRendu) {
+            await printCompteRendu(compteRenduId);
+        } else {
+            console.error('❌ Compte rendu non trouvé pour impression');
+            if (typeof showNotification === 'function') {
+                showNotification('error', 'Compte rendu non trouvé');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erreur impression compte rendu:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('error', 'Erreur lors de l\'impression');
+        }
+    }
+}
+
 // Fonctions de visualisation et traitement des anamnèses
 async function viewAnamnese(anamneseId) {
     try {
@@ -825,106 +868,205 @@ function generateAnamneseHTML(anamnese) {
         return value ? 'Oui' : 'Non';
     };
 
+    // Fonction pour calculer l'âge à partir de la date de naissance
+    const calculateAge = (dateNaissance) => {
+        if (!dateNaissance) return 'Non renseigné';
+        const dob = new Date(dateNaissance);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDifference = today.getMonth() - dob.getMonth();
+
+        if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        return age + ' ans';
+    };
+
+    // Fonction pour formater le type d'allaitement
+    const getAllaitementType = (type) => {
+        const types = {
+            'MATERNEL': 'Maternel',
+            'ARTIFICIEL': 'Artificiel',
+            'MIXTE': 'Mixte',
+            'maternel': 'Maternel',
+            'artificiel': 'Artificiel',
+            'mixte': 'Mixte'
+        };
+        return types[type] || 'Non renseigné';
+    };
+
     return `
-        <div class="preview-content">
-            <div class="cr-header">
-                <h1>ANAMNÈSE</h1>
-                <p><strong>Numéro :</strong> ${anamnese.numAnamnese}</p>
-            </div>
-            
-            <div class="section">
-                <div class="section-title">INFORMATIONS GÉNÉRALES</div>
-                <div class="two-columns">
-                    <div class="column">
-                        <p><strong>Nom et prénom :</strong> ${anamnese.nomPrenom}</p>
-                        <p><strong>Date de naissance :</strong> ${formatDateSafe(anamnese.dateNaissance)}</p>
-                    </div>
-                    <div class="column">
-                        <p><strong>Date d'entretien :</strong> ${formatDateSafe(anamnese.dateEntretien)}</p>
-                        <p><strong>Statut :</strong> ${getAnamneseStatusLabel(anamnese.statut)}</p>
-                    </div>
+        <div class="header">
+            <h1>Anamnèse :</h1>
+        </div>
+        
+        <div class="patient-info">
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Nom et prénom:</strong> ${formatValue(anamnese.nomPrenom)}</p>
+                    <p><strong>Date de naissance:</strong> ${formatDateSafe(anamnese.dateNaissance)}</p>
                 </div>
-                <p><strong>Adressé par :</strong> ${formatValue(anamnese.adressePar)}</p>
-                <p><strong>Motif de consultation :</strong> ${formatValue(anamnese.motifConsultation)}</p>
-                <p><strong>Rééducation antérieure :</strong> ${formatValue(anamnese.reeducationAnterieure)}</p>
-            </div>
-
-            ${anamnese.parents ? `
-            <div class="section">
-                <div class="section-title">INFORMATIONS SUR LES PARENTS</div>
-                <div class="two-columns">
-                    <div class="column">
-                        <p><strong>Père :</strong></p>
-                        <p>Nom : ${formatValue(anamnese.parents.nomPere)}</p>
-                        <p>Âge : ${formatValue(anamnese.parents.agePere)}</p>
-                        <p>Profession : ${formatValue(anamnese.parents.professionPere)}</p>
-                    </div>
-                    <div class="column">
-                        <p><strong>Mère :</strong></p>
-                        <p>Nom : ${formatValue(anamnese.parents.nomMere)}</p>
-                        <p>Âge : ${formatValue(anamnese.parents.ageMere)}</p>
-                        <p>Profession : ${formatValue(anamnese.parents.professionMere)}</p>
-                    </div>
-                </div>
-                <p><strong>Consanguinité :</strong> ${formatBooleanValue(anamnese.consanguinite)}</p>
-                <p><strong>Fraterie :</strong> ${formatValue(anamnese.fraterie)}</p>
-            </div>
-            ` : ''}
-
-            ${anamnese.grossesse ? `
-            <div class="section">
-                <div class="section-title">GROSSESSE</div>
-                <div class="two-columns">
-                    <div class="column">
-                        <p><strong>Désirée :</strong> ${formatBooleanValue(anamnese.grossesse.desire)}</p>
-                    </div>
-                    <div class="column">
-                        <p><strong>Compliquée :</strong> ${formatBooleanValue(anamnese.grossesse.compliquee)}</p>
-                    </div>
-                </div>
-                <p><strong>Autres informations :</strong> ${formatValue(anamnese.grossesse.autres)}</p>
-            </div>
-            ` : ''}
-
-            ${anamnese.accouchement ? `
-            <div class="section">
-                <div class="section-title">ACCOUCHEMENT</div>
-                <div class="two-columns">
-                    <div class="column">
-                        <p><strong>À terme :</strong> ${formatBooleanValue(anamnese.accouchement.terme)}</p>
-                        <p><strong>Prématuré :</strong> ${formatBooleanValue(anamnese.accouchement.premature)}</p>
-                        <p><strong>Post-maturé :</strong> ${formatBooleanValue(anamnese.accouchement.postMature)}</p>
-                    </div>
-                    <div class="column">
-                        <p><strong>Voie basse :</strong> ${formatBooleanValue(anamnese.accouchement.voieBasse)}</p>
-                        <p><strong>Césarienne :</strong> ${formatBooleanValue(anamnese.accouchement.cesarienne)}</p>
-                        <p><strong>Cris :</strong> ${formatBooleanValue(anamnese.accouchement.cris)}</p>
-                    </div>
-                </div>
-                <p><strong>Autres informations :</strong> ${formatValue(anamnese.accouchement.autres)}</p>
-            </div>
-            ` : ''}
-
-            ${anamnese.allaitement ? `
-            <div class="section">
-                <div class="section-title">ALLAITEMENT</div>
-                <div class="two-columns">
-                    <div class="column">
-                        <p><strong>Type :</strong> ${formatValue(anamnese.allaitement.type)}</p>
-                    </div>
-                    <div class="column">
-                        <p><strong>Durée :</strong> ${anamnese.allaitement.duree ? anamnese.allaitement.duree + ' mois' : 'Non renseigné'}</p>
-                    </div>
+                <div class="column">
+                    <p><strong>Date de l'entretien:</strong> ${formatDateSafe(anamnese.dateEntretien)}</p>
+                    <p><strong>Âge:</strong> ${calculateAge(anamnese.dateNaissance)}</p>
                 </div>
             </div>
-            ` : ''}
+            <p><strong>Adressé par:</strong> ${formatValue(anamnese.adressePar)}</p>
+            <p><strong>Motif de consultation:</strong> ${formatValue(anamnese.motifConsultation)}</p>
+        </div>
 
-            ${anamnese.observations ? `
-            <div class="section">
-                <div class="section-title">OBSERVATIONS</div>
-                <p class="whitespace-pre-wrap">${anamnese.observations}</p>
+        <!-- Informations sur les parents -->
+        <div class="section">
+            <div class="section-title">INFORMATIONS SUR LES PARENTS</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Père:</strong></p>
+                    <p>Nom: ${formatValue(anamnese.parents?.nomPere)}</p>
+                    <p>Âge: ${formatValue(anamnese.parents?.agePere)}</p>
+                    <p>Profession: ${formatValue(anamnese.parents?.professionPere)}</p>
+                </div>
+                <div class="column">
+                    <p><strong>Mère:</strong></p>
+                    <p>Nom: ${formatValue(anamnese.parents?.nomMere)}</p>
+                    <p>Âge: ${formatValue(anamnese.parents?.ageMere)}</p>
+                    <p>Profession: ${formatValue(anamnese.parents?.professionMere)}</p>
+                </div>
             </div>
-            ` : ''}
+            <p><strong>Consanguinité:</strong> ${formatBooleanValue(anamnese.consanguinite)}</p>
+            <p><strong>Fraterie:</strong> ${formatValue(anamnese.fraterie)}</p>
+        </div>
+        
+        <!-- Grossesse -->
+        <div class="section">
+            <div class="section-title">GROSSESSE</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Désirée:</strong> ${formatBooleanValue(anamnese.grossesse?.desire)}</p>
+                </div>
+                <div class="column">
+                    <p><strong>Compliquée:</strong> ${formatBooleanValue(anamnese.grossesse?.compliquee)}</p>
+                </div>
+            </div>
+            <p><strong>Informations complémentaires:</strong> ${formatValue(anamnese.grossesse?.autres)}</p>
+        </div>
+        
+        <!-- Accouchement -->
+        <div class="section">
+            <div class="section-title">ACCOUCHEMENT</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>À terme:</strong> ${formatBooleanValue(anamnese.accouchement?.terme)}</p>
+                    <p><strong>Prématuré:</strong> ${formatBooleanValue(anamnese.accouchement?.premature)}</p>
+                    <p><strong>Post-maturé:</strong> ${formatBooleanValue(anamnese.accouchement?.postMature)}</p>
+                </div>
+                <div class="column">
+                    <p><strong>Voie basse:</strong> ${formatBooleanValue(anamnese.accouchement?.voieBasse)}</p>
+                    <p><strong>Césarienne:</strong> ${formatBooleanValue(anamnese.accouchement?.cesarienne)}</p>
+                    <p><strong>Cris:</strong> ${formatBooleanValue(anamnese.accouchement?.cris)}</p>
+                </div>
+            </div>
+            <p><strong>Informations complémentaires:</strong> ${formatValue(anamnese.accouchement?.autres)}</p>
+        </div>
+        
+        <!-- Allaitement -->
+        <div class="section">
+            <div class="section-title">ALLAITEMENT</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Type:</strong> ${getAllaitementType(anamnese.allaitement?.type)}</p>
+                </div>
+                <div class="column">
+                    <p><strong>Durée:</strong> ${anamnese.allaitement?.duree ? anamnese.allaitement.duree + ' mois' : 'Non renseigné'}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Développement psychomoteur en tableau -->
+        <div class="section">
+            <div class="section-title">DÉVELOPPEMENT PSYCHOMOTEUR</div>
+            <table>
+                <tr>
+                    <th>Étape</th>
+                    <th>Âge/Période</th>
+                </tr>
+                <tr>
+                    <td>Tenue de la tête</td>
+                    <td>${formatValue(anamnese.developpement?.tenueTete)}</td>
+                </tr>
+                <tr>
+                    <td>Position assise</td>
+                    <td>${formatValue(anamnese.developpement?.positionAssise)}</td>
+                </tr>
+                <tr>
+                    <td>Quatre pattes</td>
+                    <td>${formatValue(anamnese.developpement?.quatrePattes)}</td>
+                </tr>
+                <tr>
+                    <td>Position debout</td>
+                    <td>${formatValue(anamnese.developpement?.positionDebout)}</td>
+                </tr>
+                <tr>
+                    <td>Marche</td>
+                    <td>${formatValue(anamnese.developpement?.marche)}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Langage -->
+        <div class="section">
+            <div class="section-title">LANGAGE</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Premier mot:</strong> ${formatValue(anamnese.langage?.premierMot)}</p>
+                </div>
+                <div class="column">
+                    <p><strong>Première phrase:</strong> ${formatValue(anamnese.langage?.premierePhrase)}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Comportement -->
+        <div class="section">
+            <div class="section-title">COMPORTEMENT</div>
+            <p><strong>Avec la mère:</strong> ${formatValue(anamnese.comportement?.avecMere || anamnese.comportement?.mere)}</p>
+            <p><strong>Avec le père:</strong> ${formatValue(anamnese.comportement?.avecPere || anamnese.comportement?.pere)}</p>
+            <p><strong>Avec les frères/sœurs:</strong> ${formatValue(anamnese.comportement?.avecFreres || anamnese.comportement?.freres)}</p>
+            <p><strong>À l'école:</strong> ${formatValue(anamnese.comportement?.aEcole || anamnese.comportement?.ecole)}</p>
+            <p><strong>Autres observations:</strong> ${formatValue(anamnese.comportement?.autres)}</p>
+        </div>
+        
+        <!-- Autres informations -->
+        <div class="section">
+            <div class="section-title">AUTRES INFORMATIONS</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Scolarisation:</strong> ${formatValue(anamnese.divers?.scolarisation)}</p>
+                    <p><strong>Sommeil:</strong> ${formatValue(anamnese.divers?.sommeil)}</p>
+                </div>
+                <div class="column">
+                    <p><strong>Appétit:</strong> ${formatValue(anamnese.divers?.appetit)}</p>
+                    <p><strong>Propreté:</strong> ${formatValue(anamnese.divers?.proprete)}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Antécédents -->
+        <div class="section">
+            <div class="section-title">ANTÉCÉDENTS</div>
+            <div class="two-columns">
+                <div class="column">
+                    <p><strong>Personnels:</strong> ${formatValue(anamnese.antecedents?.personnels)}</p>
+                </div>
+                <div class="column">
+                    <p><strong>Familiaux:</strong> ${formatValue(anamnese.antecedents?.familiaux)}</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Observations -->
+        <div class="section">
+            <div class="section-title">OBSERVATIONS</div>
+            <p>${formatValue(anamnese.observations)}</p>
         </div>
     `;
 }
@@ -941,18 +1083,18 @@ function generateCompteRenduHTML(compteRendu) {
         <div class="preview-content">
             <div class="cr-header">
                 <h1>Compte rendu du bilan psychomoteur</h1>
-                <p>N° ${compteRendu.numCompteRendu} - ${getCompteRenduStatusLabel(compteRendu.statut)}</p>
+                <p>N° ${compteRendu.numCompteRendu}</p>
             </div>
             
             <div class="patient-info">
                 <div class="two-columns">
                     <div class="column">
-                        <p><strong>Nom et prénom:</strong> ${compteRendu.nomPatient}</p>
+                        <p><strong>Nom et prénom:</strong> ${formatValue(compteRendu.nomPatient)}</p>
                         <p><strong>Date de naissance:</strong> ${formatDateSafe(compteRendu.dateNaissance)}</p>
                     </div>
                     <div class="column">
                         <p><strong>Date du bilan:</strong> ${formatDateSafe(compteRendu.dateBilan)}</p>
-                        <p><strong>Niveau:</strong> ${compteRendu.niveauScolaire}</p>
+                        <p><strong>Niveau:</strong> ${formatValue(compteRendu.niveauScolaire)}</p>
                     </div>
                 </div>
             </div>
@@ -964,62 +1106,48 @@ function generateCompteRenduHTML(compteRendu) {
                 </div>
             </div>
             
-            ${compteRendu.contenu?.presentation ? `
             <div class="section">
                 <div class="section-title">PRÉSENTATION</div>
-                <p class="whitespace-pre-line">${compteRendu.contenu.presentation}</p>
+                <p class="whitespace-pre-line">${formatValue(compteRendu.contenu?.presentation)}</p>
             </div>
-            ` : ''}
             
-            ${compteRendu.contenu?.anamnese ? `
             <div class="section">
                 <div class="section-title">ANAMNÈSE</div>
-                <p class="whitespace-pre-line">${compteRendu.contenu.anamnese}</p>
+                <p class="whitespace-pre-line">${formatValue(compteRendu.contenu?.anamnese)}</p>
             </div>
-            ` : ''}
             
-            ${compteRendu.contenu?.comportement ? `
             <div class="section">
                 <div class="section-title">COMPORTEMENT</div>
-                <p class="whitespace-pre-line">${compteRendu.contenu.comportement}</p>
+                <p class="whitespace-pre-line">${formatValue(compteRendu.contenu?.comportement)}</p>
             </div>
-            ` : ''}
             
-            ${compteRendu.bilan ? `
             <div class="section">
                 <div class="section-title">BILAN PSYCHOMOTEUR</div>
                 <div class="bilan-items">
-                    ${compteRendu.bilan.schemaCorporel ? `<div class="bilan-item"><span class="bilan-item-title">Schéma corporel :</span> ${compteRendu.bilan.schemaCorporel}</div>` : ''}
-                    ${compteRendu.bilan.espace ? `<div class="bilan-item"><span class="bilan-item-title">Espace :</span> ${compteRendu.bilan.espace}</div>` : ''}
-                    ${compteRendu.bilan.tempsRythmes ? `<div class="bilan-item"><span class="bilan-item-title">Temps et rythmes :</span> ${compteRendu.bilan.tempsRythmes}</div>` : ''}
-                    ${compteRendu.bilan.lateralite ? `<div class="bilan-item"><span class="bilan-item-title">Latéralité :</span> ${compteRendu.bilan.lateralite}</div>` : ''}
-                    ${compteRendu.bilan.graphisme ? `<div class="bilan-item"><span class="bilan-item-title">Graphisme :</span> ${compteRendu.bilan.graphisme}</div>` : ''}
-                    ${compteRendu.bilan.fonctionCognitive ? `<div class="bilan-item"><span class="bilan-item-title">Fonction cognitive :</span> ${compteRendu.bilan.fonctionCognitive}</div>` : ''}
-                    ${compteRendu.bilan.equipementMoteur ? `<div class="bilan-item"><span class="bilan-item-title">Équipement moteur :</span> ${compteRendu.bilan.equipementMoteur}</div>` : ''}
+                    <div class="bilan-item"><span class="bilan-item-title">Schéma corporel :</span> ${formatValue(compteRendu.bilan?.schemaCorporel)}</div>
+                    <div class="bilan-item"><span class="bilan-item-title">Espace :</span> ${formatValue(compteRendu.bilan?.espace)}</div>
+                    <div class="bilan-item"><span class="bilan-item-title">Temps et rythmes :</span> ${formatValue(compteRendu.bilan?.tempsRythmes)}</div>
+                    <div class="bilan-item"><span class="bilan-item-title">Latéralité :</span> ${formatValue(compteRendu.bilan?.lateralite)}</div>
+                    <div class="bilan-item"><span class="bilan-item-title">Graphisme :</span> ${formatValue(compteRendu.bilan?.graphisme)}</div>
+                    <div class="bilan-item"><span class="bilan-item-title">Fonction cognitive :</span> ${formatValue(compteRendu.bilan?.fonctionCognitive)}</div>
+                    <div class="bilan-item"><span class="bilan-item-title">Équipement moteur :</span> ${formatValue(compteRendu.bilan?.equipementMoteur)}</div>
                 </div>
             </div>
-            ` : ''}
             
-            ${compteRendu.contenu?.conclusion ? `
             <div class="section">
                 <div class="section-title">CONCLUSION</div>
-                <p class="whitespace-pre-line">${compteRendu.contenu.conclusion}</p>
+                <p class="whitespace-pre-line">${formatValue(compteRendu.contenu?.conclusion)}</p>
             </div>
-            ` : ''}
             
-            ${compteRendu.contenu?.projetTherapeutique ? `
             <div class="section">
                 <div class="section-title">PROJET THÉRAPEUTIQUE</div>
-                <p class="whitespace-pre-line">${compteRendu.contenu.projetTherapeutique}</p>
+                <p class="whitespace-pre-line">${formatValue(compteRendu.contenu?.projetTherapeutique)}</p>
             </div>
-            ` : ''}
             
-            ${compteRendu.observations ? `
             <div class="section">
                 <div class="section-title">OBSERVATIONS</div>
-                <p class="whitespace-pre-line">${compteRendu.observations}</p>
+                <p class="whitespace-pre-line">${formatValue(compteRendu.observations)}</p>
             </div>
-            ` : ''}
         </div>
     `;
 }
@@ -1031,12 +1159,6 @@ function generatePrintableAnamneseContent(anamnese) {
         <head>
             <title>Anamnèse ${anamnese.numAnamnese}</title>
             <style>
-                .preview-content,
-                .preview-content * {
-                    white-space: normal !important;
-                    word-break: break-word !important;
-                    overflow-wrap: break-word !important;
-                }
                 body { 
                     font-family: 'Times New Roman', serif; 
                     font-size: 12pt; 
@@ -1045,14 +1167,20 @@ function generatePrintableAnamneseContent(anamnese) {
                     max-width: 800px;
                     margin: 0 auto;
                 }
-                .cr-header {
+                .header {
                     text-align: center;
                     margin-bottom: 40px;
                 }
-                .cr-header h1 {
+                .header h1 {
                     font-size: 18pt;
                     font-weight: bold;
                     margin-bottom: 10px;
+                }
+                .patient-info {
+                    margin-bottom: 20px;
+                }
+                .patient-info p {
+                    margin: 5px 0;
                 }
                 .section {
                     margin-bottom: 15px;
@@ -1070,8 +1198,20 @@ function generatePrintableAnamneseContent(anamnese) {
                 .column {
                     width: 48%;
                 }
-                .whitespace-pre-wrap {
-                    white-space: pre-wrap;
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 10px 0;
+                }
+                table, th, td {
+                    border: 1px solid #000;
+                }
+                th, td {
+                    padding: 8px;
+                    text-align: left;
+                }
+                .text-center {
+                    text-align: center;
                 }
             </style>
         </head>
@@ -1591,5 +1731,6 @@ window.openPatientRecords = openPatientRecords;
 window.loadPatientSeances = loadPatientSeances;
 window.openAddSessionsModal = openAddSessionsModal;
 window.addSessionToPatient = addSessionToPatient;
-
+window.printAnamneseFromList = printAnamneseFromList;
+window.printCompteRenduFromList = printCompteRenduFromList;
 console.log('📄 Module patient-records chargé avec succès');

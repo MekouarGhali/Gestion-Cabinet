@@ -56,17 +56,6 @@ public class FactureController {
         }
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Facture facture) {
-        try {
-            Facture updated = factureService.update(id, facture);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            log.error("Erreur lors de la modification de la facture", e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {

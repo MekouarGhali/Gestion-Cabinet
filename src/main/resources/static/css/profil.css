@@ -18,14 +18,14 @@ body {
 }
 
 #documentsSubmenu {
-    max-height: 0;
+    max-height: 500px; /* ✅ Visible par défaut */
     overflow: hidden;
     transition: max-height 0.3s ease;
     padding-left: 3rem;
 }
 
-#documentsSubmenu.show {
-    max-height: 500px;
+#documentsSubmenu.hidden {
+    max-height: 0; /* ✅ Caché avec .hidden */
 }
 
 .burger-btn {

@@ -77,51 +77,6 @@ public class DevisService {
         return devisRepository.save(devis);
     }
 
-    public Devis update(Long id, Devis devisDetails) {
-        Devis devis = getById(id);
-
-        // Valider les données
-        validateDevis(devisDetails);
-
-        // Vérifier l'unicité du numéro si modifié
-        if (!devis.getNumero().equals(devisDetails.getNumero())) {
-            if (devisRepository.existsByNumero(devisDetails.getNumero())) {
-                throw new RuntimeException("Le numéro de devis " + devisDetails.getNumero() + " existe déjà");
-            }
-            devis.setNumero(devisDetails.getNumero());
-        }
-
-        // Mettre à jour les champs
-        devis.setNomPatient(devisDetails.getNomPatient());
-        devis.setDate(devisDetails.getDate());
-        devis.setMutuelle(devisDetails.getMutuelle());
-        devis.setAdresse(devisDetails.getAdresse());
-        devis.setGsm(devisDetails.getGsm());
-        devis.setIce(devisDetails.getIce());
-
-        // Mettre à jour les prestations
-        if (devisDetails.getPrestations() != null) {
-            // Supprimer les anciennes prestations
-            devis.getPrestations().clear();
-
-            // Ajouter les nouvelles prestations
-            devisDetails.getPrestations().forEach(prestation -> {
-                prestation.setDevis(devis);
-                prestation.setTotal(prestation.getQuantite() * prestation.getPrixUnitaire());
-                devis.getPrestations().add(prestation);
-            });
-        }
-
-        // Recalculer le montant total
-        double montantTotal = devis.getPrestations().stream()
-                .mapToDouble(Prestation::getTotal)
-                .sum();
-        devis.setMontantTotal(montantTotal);
-
-        log.info("Modification devis {} pour {}", devis.getNumero(), devis.getNomPatient());
-        return devisRepository.save(devis);
-    }
-
     public void delete(Long id) {
         Devis devis = getById(id);
         log.info("Suppression devis {} pour {}", devis.getNumero(), devis.getNomPatient());

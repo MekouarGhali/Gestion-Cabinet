@@ -213,11 +213,19 @@ function activateCurrentTab() {
 }
 
 function setupSidebarEventListeners() {
-    // Attendre que les éléments soient disponibles
+    // Attendre que les éléments soient disponibles (délai augmenté)
     setTimeout(() => {
+        console.log('🔧 setupSidebarEventListeners() appelé');
+        console.log('📍 URL actuelle:', window.location.pathname);
+
         // Toggle sidebar pour mobile
         const openSidebarBtn = document.getElementById('openSidebarBtn');
         const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+        console.log('🔍 Éléments sidebar trouvés:', {
+            openBtn: !!openSidebarBtn,
+            closeBtn: !!closeSidebarBtn
+        });
 
         if (openSidebarBtn) {
             openSidebarBtn.addEventListener('click', toggleSidebar);
@@ -229,26 +237,74 @@ function setupSidebarEventListeners() {
             console.log('✅ Event listener closeSidebarBtn configuré');
         }
 
-        // Gérer le dropdown documents
+        // ✅ GESTION CENTRALISÉE DU DROPDOWN DOCUMENTS
+        console.log('🔍 Recherche des éléments dropdown...');
         const documentsDropdown = document.getElementById('documentsDropdown');
-        if (documentsDropdown) {
-            documentsDropdown.addEventListener('click', function(e) {
+        const submenu = document.getElementById('documentsSubmenu');
+        const icon = document.getElementById('dropdownArrow');
+
+        console.log('📋 Éléments dropdown trouvés:', {
+            dropdown: !!documentsDropdown,
+            submenu: !!submenu,
+            icon: !!icon
+        });
+
+        if (documentsDropdown && submenu && icon) {
+            console.log('🔧 Configuration du dropdown documents (centralisé)...');
+
+            // Par sécurité, cache le submenu au chargement si pas déjà caché
+            submenu.classList.add('hidden');
+
+            // Supprimer les anciens event listeners (au cas où)
+            const newDropdown = documentsDropdown.cloneNode(true);
+            documentsDropdown.parentNode.replaceChild(newDropdown, documentsDropdown);
+
+            // Ajouter le nouvel event listener
+            document.getElementById('documentsDropdown').addEventListener('click', function(e) {
+                console.log('📋 Clic sur dropdown documents détecté');
                 e.preventDefault();
-                const submenu = document.getElementById('documentsSubmenu');
-                const icon = document.getElementById('dropdownArrow');
+                e.stopPropagation();
 
-                if (submenu) {
-                    submenu.classList.toggle('show');
-                }
+                const currentSubmenu = document.getElementById('documentsSubmenu');
+                const currentIcon = document.getElementById('dropdownArrow');
 
-                if (icon) {
-                    icon.classList.toggle('ri-arrow-down-s-line');
-                    icon.classList.toggle('ri-arrow-up-s-line');
+                currentSubmenu.classList.toggle('hidden');
+                currentIcon.classList.toggle('rotate-180');
+                console.log('📋 Dropdown documents togglé - hidden:', currentSubmenu.classList.contains('hidden'));
+            });
+
+            // Ferme le dropdown si clic en dehors
+            document.addEventListener('click', function(e) {
+                const currentDropdown = document.getElementById('documentsDropdown');
+                const currentSubmenu = document.getElementById('documentsSubmenu');
+
+                if (currentDropdown && currentSubmenu &&
+                    !currentDropdown.contains(e.target) &&
+                    !currentSubmenu.contains(e.target)) {
+                    currentSubmenu.classList.add('hidden');
+                    document.getElementById('dropdownArrow')?.classList.remove('rotate-180');
                 }
             });
-            console.log('✅ Dropdown documents configuré');
+
+            console.log('✅ Dropdown documents configuré (CENTRALISÉ)');
+        } else {
+            console.log('❌ Éléments dropdown documents manquants:', {
+                dropdown: documentsDropdown ? 'OK' : 'MANQUANT',
+                submenu: submenu ? 'OK' : 'MANQUANT',
+                icon: icon ? 'OK' : 'MANQUANT'
+            });
+
+            // Essayer de voir ce qui est présent dans le DOM
+            console.log('🔍 Tous les éléments avec ID dans la sidebar:');
+            const sidebarContainer = document.getElementById('sidebar-container') || document.getElementById('sidebar');
+            if (sidebarContainer) {
+                const elementsWithId = sidebarContainer.querySelectorAll('[id]');
+                elementsWithId.forEach(el => {
+                    console.log(`  - ${el.id}: ${el.tagName}`);
+                });
+            }
         }
-    }, 150);
+    }, 200); // ✅ Délai augmenté pour être sûr que la sidebar est chargée
 }
 
 function toggleSidebar() {

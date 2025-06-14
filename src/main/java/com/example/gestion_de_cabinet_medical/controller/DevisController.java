@@ -56,17 +56,6 @@ public class DevisController {
         }
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Devis devis) {
-        try {
-            Devis updated = devisService.update(id, devis);
-            return ResponseEntity.ok(updated);
-        } catch (RuntimeException e) {
-            log.error("Erreur lors de la modification du devis", e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {

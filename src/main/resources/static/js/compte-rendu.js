@@ -434,8 +434,8 @@ function renderTableView(comptesRendus) {
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex justify-end space-x-2">
-                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-blue-500 view-compte-rendu-btn" data-id="${compteRendu.id}">
-                        <i class="ri-eye-line"></i>
+                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-green-600 print-compte-rendu-btn" data-id="${compteRendu.id}">
+                        <i class="ri-printer-line"></i>
                     </button>
                     <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 edit-compte-rendu-btn" data-id="${compteRendu.id}">
                         <i class="ri-edit-line"></i>
@@ -512,13 +512,16 @@ function createPagination(totalPages) {
 }
 
 function addButtonEventListeners() {
-    document.querySelectorAll('.view-compte-rendu-btn').forEach(btn => {
+
+    document.querySelectorAll('.print-compte-rendu-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const compteRenduId = this.dataset.id;
-            const compteRendu = await CompteRenduAPI.getById(compteRenduId);
 
-            if (compteRendu) {
-                openViewModal(compteRendu);
+            if (typeof window.printCompteRenduFromList === 'function') {
+                await window.printCompteRenduFromList(compteRenduId);
+            } else {
+                console.error('❌ Fonction d\'impression non disponible');
+                showNotification('error', 'Fonction d\'impression non disponible');
             }
         });
     });
@@ -787,24 +790,6 @@ function clearPatientFields(searchInputId) {
             console.warn(`⚠️ Champ ${fieldConfig.id} non trouvé pour effacement`);
         }
     });
-}
-
-// Gestion des sections du formulaire
-function toggleSection(sectionName) {
-    const section = document.getElementById('section-' + sectionName);
-    const arrow = document.getElementById('arrow-' + sectionName);
-
-    if (!section || !arrow) return;
-
-    if (section.classList.contains('hidden')) {
-        section.classList.remove('hidden');
-        arrow.classList.remove('ri-arrow-down-s-line');
-        arrow.classList.add('ri-arrow-up-s-line');
-    } else {
-        section.classList.add('hidden');
-        arrow.classList.remove('ri-arrow-up-s-line');
-        arrow.classList.add('ri-arrow-down-s-line');
-    }
 }
 
 // Gestion des tests
@@ -1366,211 +1351,6 @@ function resetNewForm() {
     });
 }
 
-// Impression
-function printCompteRendu(compteRendu) {
-    const printContent = generatePrintContent(compteRendu);
-
-    // Créer une iframe pour l'impression
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    printFrame.style.visibility = 'hidden';
-
-    document.body.appendChild(printFrame);
-
-    const frameDoc = printFrame.contentWindow.document;
-    frameDoc.open();
-    frameDoc.write(printContent);
-    frameDoc.close();
-
-    printFrame.onload = function() {
-        try {
-            printFrame.contentWindow.focus();
-            setTimeout(() => {
-                printFrame.contentWindow.print();
-                setTimeout(() => {
-                    if (printFrame && printFrame.parentNode) {
-                        printFrame.parentNode.removeChild(printFrame);
-                    }
-                }, 1000);
-            }, 200);
-        } catch (error) {
-            console.error('Erreur lors de l\'impression:', error);
-            showNotification('error', 'Erreur lors de l\'impression');
-            if (printFrame && printFrame.parentNode) {
-                printFrame.parentNode.removeChild(printFrame);
-            }
-        }
-    };
-}
-
-function generatePrintContent(compteRendu) {
-    const testsHtml = compteRendu.testsUtilises && compteRendu.testsUtilises.length > 0
-        ? compteRendu.testsUtilises.map(test => `<div class="test-item">${test}</div>`).join('')
-        : '<div class="text-muted">Aucun test spécifié</div>';
-
-    return `<!DOCTYPE html>
-        <html>
-        <head>
-            <title>Compte Rendu ${compteRendu.numCompteRendu}</title>
-            <style>
-                body { 
-                    font-family: 'Times New Roman', serif; 
-                    font-size: 12pt; 
-                    line-height: 1.6;
-                    padding: 20px;
-                    max-width: 800px;
-                    margin: 0 auto;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 40px;
-                }
-                .header h1 {
-                    font-size: 18pt;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                }
-                .patient-info {
-                    margin-bottom: 20px;
-                }
-                .patient-info p {
-                    margin: 5px 0;
-                }
-                .section {
-                    margin-bottom: 15px;
-                }
-                .section-title {
-                    font-weight: bold;
-                    margin-bottom: 5px;
-                    border-bottom: 1px solid #000;
-                    padding-bottom: 3px;
-                }
-                .two-columns {
-                    display: flex;
-                    justify-content: space-between;
-                }
-                .column {
-                    width: 48%;
-                }
-                .test-grid {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 10px;
-                    margin-top: 5px;
-                }
-                .test-item {
-                    background-color: #f3f4f6;
-                    padding: 4px 10px;
-                    border-radius: 4px;
-                    display: inline-block;
-                    font-size: 10pt;
-                }
-                .bilan-items {
-                    margin-top: 5px;
-                }
-                .bilan-item {
-                    margin-bottom: 8px;
-                }
-                .bilan-item-title {
-                    font-weight: bold;
-                }
-                .text-muted {
-                    color: #666;
-                    font-style: italic;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>Compte rendu du bilan psychomoteur</h1>
-            </div>
-            
-            <div class="patient-info">
-                <div class="two-columns">
-                    <div class="column">
-                        <p><strong>Nom et prénom:</strong> ${compteRendu.nomPatient}</p>
-                        <p><strong>Date de naissance:</strong> ${formatDate(compteRendu.dateNaissance)}</p>
-                    </div>
-                    <div class="column">
-                        <p><strong>Date du bilan:</strong> ${formatDate(compteRendu.dateBilan)}</p>
-                        <p><strong>Niveau:</strong> ${compteRendu.niveauScolaire}</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section">
-                <div class="section-title">TESTS UTILISÉS</div>
-                <div class="test-grid">
-                    ${testsHtml}
-                </div>
-            </div>
-            
-            ${compteRendu.contenu?.presentation ? `
-            <div class="section">
-                <div class="section-title">PRÉSENTATION</div>
-                <p>${compteRendu.contenu.presentation}</p>
-            </div>
-            ` : ''}
-            
-            ${compteRendu.contenu?.anamnese ? `
-            <div class="section">
-                <div class="section-title">ANAMNÈSE</div>
-                <p>${compteRendu.contenu.anamnese}</p>
-            </div>
-            ` : ''}
-            
-            ${compteRendu.contenu?.comportement ? `
-            <div class="section">
-                <div class="section-title">COMPORTEMENT</div>
-                <p>${compteRendu.contenu.comportement}</p>
-            </div>
-            ` : ''}
-            
-            ${compteRendu.bilan ? `
-            <div class="section">
-                <div class="section-title">BILAN PSYCHOMOTEUR</div>
-                <div class="bilan-items">
-                    ${compteRendu.bilan.schemaCorporel ? `<div class="bilan-item"><span class="bilan-item-title">Schéma corporel :</span> ${compteRendu.bilan.schemaCorporel}</div>` : ''}
-                    ${compteRendu.bilan.espace ? `<div class="bilan-item"><span class="bilan-item-title">Espace :</span> ${compteRendu.bilan.espace}</div>` : ''}
-                    ${compteRendu.bilan.tempsRythmes ? `<div class="bilan-item"><span class="bilan-item-title">Temps et rythmes :</span> ${compteRendu.bilan.tempsRythmes}</div>` : ''}
-                    ${compteRendu.bilan.lateralite ? `<div class="bilan-item"><span class="bilan-item-title">Latéralité :</span> ${compteRendu.bilan.lateralite}</div>` : ''}
-                    ${compteRendu.bilan.graphisme ? `<div class="bilan-item"><span class="bilan-item-title">Graphisme :</span> ${compteRendu.bilan.graphisme}</div>` : ''}
-                    ${compteRendu.bilan.fonctionCognitive ? `<div class="bilan-item"><span class="bilan-item-title">Fonction cognitive :</span> ${compteRendu.bilan.fonctionCognitive}</div>` : ''}
-                    ${compteRendu.bilan.equipementMoteur ? `<div class="bilan-item"><span class="bilan-item-title">Équipement moteur :</span> ${compteRendu.bilan.equipementMoteur}</div>` : ''}
-                </div>
-            </div>
-            ` : ''}
-            
-            ${compteRendu.contenu?.conclusion ? `
-            <div class="section">
-                <div class="section-title">CONCLUSION</div>
-                <p>${compteRendu.contenu.conclusion}</p>
-            </div>
-            ` : ''}
-            
-            ${compteRendu.contenu?.projetTherapeutique ? `
-            <div class="section">
-                <div class="section-title">PROJET THÉRAPEUTIQUE</div>
-                <p>${compteRendu.contenu.projetTherapeutique}</p>
-            </div>
-            ` : ''}
-            
-            ${compteRendu.observations ? `
-            <div class="section">
-                <div class="section-title">OBSERVATIONS</div>
-                <p>${compteRendu.observations}</p>
-            </div>
-            ` : ''}
-            
-        </body>
-        </html>`;
-}
-
 // Notifications
 function showNotification(type, message) {
     const notification = document.getElementById('notification');
@@ -1607,72 +1387,11 @@ function showNotification(type, message) {
     }, 5000);
 }
 
-// Fonction simplifiée pour le toggle sidebar
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    const openSidebarBtn = document.getElementById('openSidebarBtn');
-    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-
-    if (!sidebar || !mainContent || !openSidebarBtn || !closeSidebarBtn) return;
-
-    const isOpen = !sidebar.classList.contains('sidebar-hidden');
-
-    if (isOpen) {
-        // Fermer
-        sidebar.classList.add('sidebar-hidden');
-        mainContent.classList.remove('ml-64');
-        openSidebarBtn.classList.remove('hidden');
-        openSidebarBtn.style.display = 'flex';
-        closeSidebarBtn.classList.add('hidden');
-    } else {
-        // Ouvrir
-        sidebar.classList.remove('sidebar-hidden');
-        mainContent.classList.add('ml-64');
-        openSidebarBtn.classList.add('hidden');
-        openSidebarBtn.style.display = 'none';
-        closeSidebarBtn.classList.remove('hidden');
-    }
-}
-
 // Initialisation principale
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('🚀 Initialisation de la page comptes rendus...');
 
-    // 1. Charger la sidebar
-    try {
-        const response = await fetch('/partials/sidebar.html');
-        const sidebarHTML = await response.text();
-        document.getElementById('sidebar-container').innerHTML = sidebarHTML;
-        console.log('✅ Sidebar chargée');
-    } catch (error) {
-        console.error("❌ Erreur lors du chargement de la sidebar :", error);
-    }
-
     checkURLParametersCompteRendu();
-
-    // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
-    setTimeout(() => {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const openSidebarBtn = document.getElementById('openSidebarBtn');
-        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-
-        if (sidebar && mainContent && openSidebarBtn && closeSidebarBtn) {
-            // Event listeners pour le toggle
-            openSidebarBtn.addEventListener('click', toggleSidebar);
-            closeSidebarBtn.addEventListener('click', toggleSidebar);
-
-            // État initial : sidebar ouverte
-            sidebar.classList.remove('sidebar-hidden');
-            mainContent.classList.add('ml-64');
-            openSidebarBtn.classList.add('hidden');
-            openSidebarBtn.style.display = 'none';
-            closeSidebarBtn.classList.remove('hidden');
-
-            console.log('✅ Toggle sidebar configuré');
-        }
-    }, 200);
 
     // 3. Configurer la date actuelle
     const currentDate = document.getElementById('currentDate');

@@ -6,7 +6,6 @@ let allDevis = [];
 let filteredDevis = [];
 let selectedDevis = null;
 let devisToDelete = null;
-let currentDevisId = null;
 let currentFilter = 'all';
 let currentPage = 1;
 let itemsPerPage = 10;
@@ -61,27 +60,6 @@ class DevisAPI {
             return await response.json();
         } catch (error) {
             console.error('Erreur API create:', error);
-            throw error;
-        }
-    }
-
-    static async update(id, devisData) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/devis/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(devisData)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Erreur lors de la mise à jour');
-            }
-            return await response.json();
-        } catch (error) {
-            console.error('Erreur API update:', error);
             throw error;
         }
     }
@@ -471,9 +449,6 @@ function renderDevisTable(devis) {
                     <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-green-600 print-devis-btn" data-id="${devis.id}">
                         <i class="ri-printer-line"></i>
                     </button>
-                    <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-600 edit-devis-btn" data-id="${devis.id}">
-                        <i class="ri-edit-line"></i>
-                    </button>
                     <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-red-500 delete-devis-btn" data-id="${devis.id}">
                         <i class="ri-delete-bin-line"></i>
                     </button>
@@ -559,14 +534,6 @@ function addTableEventListeners() {
         btn.addEventListener('click', async function() {
             const devisId = this.dataset.id;
             await printDevisById(devisId);
-        });
-    });
-
-    // Boutons d'édition
-    document.querySelectorAll('.edit-devis-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const devisId = this.dataset.id;
-            await editDevis(devisId);
         });
     });
 
@@ -657,20 +624,14 @@ async function saveDevis() {
             prestations: prestations
         };
 
-        // Ajouter le numéro si modifié
+        // Ajouter le numéro du devis
         const numDevis = document.getElementById('numDevis').value;
-        if (numDevis && !document.getElementById('numDevis').readOnly) {
+        if (numDevis) {
             devisData.numero = numDevis;
         }
 
-        let savedDevis;
-        if (currentDevisId) {
-            savedDevis = await DevisAPI.update(currentDevisId, devisData);
-            showNotification('success', 'Devis modifié avec succès!');
-        } else {
-            savedDevis = await DevisAPI.create(devisData);
-            showNotification('success', 'Devis créé avec succès!');
-        }
+        const savedDevis = await DevisAPI.create(devisData);
+        showNotification('success', 'Devis créé avec succès!');
 
         // Recharger la liste et masquer le formulaire
         await loadDevis();
@@ -1149,47 +1110,6 @@ async function viewDevis(id) {
     }
 }
 
-async function editDevis(id) {
-    try {
-        const devis = await DevisAPI.getById(id);
-        if (!devis) return;
-
-        currentDevisId = id;
-
-        // Afficher le formulaire
-        showForm();
-
-        // Attendre que le formulaire soit affiché avant de le remplir
-        setTimeout(async () => {
-            // Générer et remplir le formulaire avec les données du devis
-            await resetFormData();
-
-            document.getElementById('numDevis').value = devis.numero;
-            document.getElementById('nomPatient').value = devis.nomPatient;
-            document.getElementById('dateDevis').value = devis.date;
-            document.getElementById('adresse').value = devis.adresse;
-            document.getElementById('gsm').value = devis.gsm;
-            document.getElementById('ice').value = devis.ice;
-
-            // Sélectionner la mutuelle
-            const mutuelleRadio = document.querySelector(`input[name="mutuelle"][value="${devis.mutuelle}"]`);
-            if (mutuelleRadio) mutuelleRadio.checked = true;
-
-            // Remplir les prestations
-            const tableBody = document.getElementById('prestationsTable');
-            tableBody.innerHTML = '';
-
-            devis.prestations.forEach(prestation => {
-                addPrestation(prestation.designation, prestation.quantite, prestation.prixUnitaire);
-            });
-        }, 100);
-
-    } catch (error) {
-        console.error('Erreur lors de l\'édition:', error);
-        showNotification('error', 'Erreur lors du chargement du devis');
-    }
-}
-
 function confirmDeleteDevis(id) {
     devisToDelete = id;
     document.getElementById('deleteConfirmModal').classList.remove('hidden');
@@ -1254,7 +1174,6 @@ async function searchDevis() {
 
 // Réinitialisation des données du formulaire
 async function resetFormData() {
-    currentDevisId = null;
 
     // Générer un nouveau numéro de devis
     try {
@@ -1318,70 +1237,9 @@ function showNotification(type, message, title = null) {
     }, 5000);
 }
 
-// Fonction simplifiée pour le toggle sidebar
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    const openSidebarBtn = document.getElementById('openSidebarBtn');
-    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-
-    if (!sidebar || !mainContent || !openSidebarBtn || !closeSidebarBtn) return;
-
-    const isOpen = !sidebar.classList.contains('sidebar-hidden');
-
-    if (isOpen) {
-        // Fermer
-        sidebar.classList.add('sidebar-hidden');
-        mainContent.classList.remove('ml-64');
-        openSidebarBtn.classList.remove('hidden');
-        openSidebarBtn.style.display = 'flex';
-        closeSidebarBtn.classList.add('hidden');
-    } else {
-        // Ouvrir
-        sidebar.classList.remove('sidebar-hidden');
-        mainContent.classList.add('ml-64');
-        openSidebarBtn.classList.add('hidden');
-        openSidebarBtn.style.display = 'none';
-        closeSidebarBtn.classList.remove('hidden');
-    }
-}
-
 // Initialisation principale
 document.addEventListener('DOMContentLoaded', async function () {
     console.log('🚀 Initialisation de la page devis...');
-
-    // 1. Charger la sidebar
-    try {
-        const response = await fetch('/partials/sidebar.html');
-        const sidebarHTML = await response.text();
-        document.getElementById('sidebar-container').innerHTML = sidebarHTML;
-        console.log('✅ Sidebar chargée');
-    } catch (error) {
-        console.error("❌ Erreur lors du chargement de la sidebar :", error);
-    }
-
-    // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
-    setTimeout(() => {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const openSidebarBtn = document.getElementById('openSidebarBtn');
-        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-
-        if (sidebar && mainContent && openSidebarBtn && closeSidebarBtn) {
-            // Event listeners pour le toggle
-            openSidebarBtn.addEventListener('click', toggleSidebar);
-            closeSidebarBtn.addEventListener('click', toggleSidebar);
-
-            // État initial : sidebar ouverte
-            sidebar.classList.remove('sidebar-hidden');
-            mainContent.classList.add('ml-64');
-            openSidebarBtn.classList.add('hidden');
-            openSidebarBtn.style.display = 'none';
-            closeSidebarBtn.classList.remove('hidden');
-
-            console.log('✅ Toggle sidebar configuré');
-        }
-    }, 200);
 
     // 3. Configurer la date actuelle
     const currentDate = document.getElementById('currentDate');

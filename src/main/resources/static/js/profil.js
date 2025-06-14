@@ -844,34 +844,6 @@ async function saveProfilPhoto() {
     }
 }
 
-// Fonction simplifiée pour le toggle sidebar
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('mainContent');
-    const openSidebarBtn = document.getElementById('openSidebarBtn');
-    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-
-    if (!sidebar || !mainContent || !openSidebarBtn || !closeSidebarBtn) return;
-
-    const isOpen = !sidebar.classList.contains('sidebar-hidden');
-
-    if (isOpen) {
-        // Fermer
-        sidebar.classList.add('sidebar-hidden');
-        mainContent.classList.remove('ml-64');
-        openSidebarBtn.classList.remove('hidden');
-        openSidebarBtn.style.display = 'flex';
-        closeSidebarBtn.classList.add('hidden');
-    } else {
-        // Ouvrir
-        sidebar.classList.remove('sidebar-hidden');
-        mainContent.classList.add('ml-64');
-        openSidebarBtn.classList.add('hidden');
-        openSidebarBtn.style.display = 'none';
-        closeSidebarBtn.classList.remove('hidden');
-    }
-}
-
 // Configuration des event listeners
 function setupEventListeners() {
     // Boutons principaux
@@ -936,39 +908,6 @@ function setupEventListeners() {
 // Initialisation principale
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Initialisation de la page profil...');
-
-    // 1. Charger la sidebar
-    try {
-        const response = await fetch('/partials/sidebar.html');
-        const sidebarHTML = await response.text();
-        document.getElementById('sidebar-container').innerHTML = sidebarHTML;
-        console.log('✅ Sidebar chargée');
-    } catch (error) {
-        console.error("❌ Erreur lors du chargement de la sidebar :", error);
-    }
-
-    // 2. Attendre que la sidebar soit chargée puis configurer les event listeners
-    setTimeout(() => {
-        const sidebar = document.getElementById('sidebar');
-        const mainContent = document.getElementById('mainContent');
-        const openSidebarBtn = document.getElementById('openSidebarBtn');
-        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
-
-        if (sidebar && mainContent && openSidebarBtn && closeSidebarBtn) {
-            // Event listeners pour le toggle
-            openSidebarBtn.addEventListener('click', toggleSidebar);
-            closeSidebarBtn.addEventListener('click', toggleSidebar);
-
-            // État initial : sidebar ouverte
-            sidebar.classList.remove('sidebar-hidden');
-            mainContent.classList.add('ml-64');
-            openSidebarBtn.classList.add('hidden');
-            openSidebarBtn.style.display = 'none';
-            closeSidebarBtn.classList.remove('hidden');
-
-            console.log('✅ Toggle sidebar configuré');
-        }
-    }, 200);
 
     // 3. Configurer la date actuelle
     const currentDate = document.getElementById('currentDate');

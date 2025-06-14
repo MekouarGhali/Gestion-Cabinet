@@ -13,6 +13,17 @@
     transform: translateX(-100%);
 }
 
+#documentsSubmenu {
+    max-height: 500px; /* ✅ Visible par défaut */
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    padding-left: 3rem;
+}
+
+#documentsSubmenu.hidden {
+    max-height: 0; /* ✅ Caché avec .hidden */
+}
+
 /* Status badges */
 .status-badge {
     padding: 4px 10px;
